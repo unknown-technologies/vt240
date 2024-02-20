@@ -81,6 +81,8 @@ static const float quad_vertices[] = {
 	-1.0f, -1.0f,  0.0f
 };
 
+#define	QUAD_VTX_CNT	(sizeof(quad_vertices) / (sizeof(*quad_vertices) * 3))
+
 static const GLfloat vt240_colors[8][3] = {
 	/* monochrome */
 #ifndef VT240_ALTERNATE_INTENSITY
@@ -193,7 +195,7 @@ void VTRender(VTRenderer* self, unsigned int width, unsigned int height)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glBindVertexArray(self->quad_vao);
-	glDrawArrays(GL_TRIANGLES, 0, sizeof(quad_vertices) / sizeof(*quad_vertices));
+	glDrawArrays(GL_TRIANGLES, 0, QUAD_VTX_CNT);
 
 	GL_ERROR();
 }
@@ -250,10 +252,10 @@ void VTRenderTerminal(VTRenderer* self)
 	glDrawBuffers(2, buffers);
 
 	glBindVertexArray(self->quad_vao);
-	glDrawArrays(GL_TRIANGLES, 0, sizeof(quad_vertices) / sizeof(*quad_vertices));
+	glDrawArrays(GL_TRIANGLES, 0, QUAD_VTX_CNT);
 
 	// unbind textures
-	for(unsigned int i = 0; i < 5; i++) {
+	for(unsigned int i = 0; i < 6; i++) {
 		glActiveTexture(GL_TEXTURE0 + i);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
@@ -279,7 +281,7 @@ void VTRenderBlur(VTRenderer* self)
 	glUniform2f(self->blur_shader_dir, 1.0f, 0.0f);
 
 	glBindVertexArray(self->quad_vao);
-	glDrawArrays(GL_TRIANGLES, 0, sizeof(quad_vertices) / sizeof(*quad_vertices));
+	glDrawArrays(GL_TRIANGLES, 0, QUAD_VTX_CNT);
 
 	// PASS 1: render vertical blur
 	glBindFramebuffer(GL_FRAMEBUFFER, self->blur_fb[1]);
@@ -292,7 +294,7 @@ void VTRenderBlur(VTRenderer* self)
 	glUniform2f(self->blur_shader_dir, 0.0f, 1.0f);
 
 	glBindVertexArray(self->quad_vao);
-	glDrawArrays(GL_TRIANGLES, 0, sizeof(quad_vertices) / sizeof(*quad_vertices));
+	glDrawArrays(GL_TRIANGLES, 0, QUAD_VTX_CNT);
 
 	// PASS 2: render horizontal blur
 	glBindFramebuffer(GL_FRAMEBUFFER, self->blur_fb[0]);
@@ -308,7 +310,7 @@ void VTRenderBlur(VTRenderer* self)
 	glUniform2f(self->blur_shader_dir, 1.0f, 0.0f);
 
 	glBindVertexArray(self->quad_vao);
-	glDrawArrays(GL_TRIANGLES, 0, sizeof(quad_vertices) / sizeof(*quad_vertices));
+	glDrawArrays(GL_TRIANGLES, 0, QUAD_VTX_CNT);
 
 	// PASS 3: render vertical blur
 	glBindFramebuffer(GL_FRAMEBUFFER, self->blur_fb[1]);
@@ -321,7 +323,7 @@ void VTRenderBlur(VTRenderer* self)
 	glUniform2f(self->blur_shader_dir, 0.0f, 1.0f);
 
 	glBindVertexArray(self->quad_vao);
-	glDrawArrays(GL_TRIANGLES, 0, sizeof(quad_vertices) / sizeof(*quad_vertices));
+	glDrawArrays(GL_TRIANGLES, 0, QUAD_VTX_CNT);
 
 	// unbind texture
 	glActiveTexture(GL_TEXTURE0);
@@ -340,7 +342,7 @@ void VTCreateBuffers(VTRenderer* self)
 	glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), quad_vertices, GL_STATIC_DRAW);
 
 	glEnableVertexAttribArray(loc);
-	glVertexAttribPointer(loc , 3, GL_FLOAT, 0, 0, 0);
+	glVertexAttribPointer(loc , 3, GL_FLOAT, GL_FALSE, 0, 0);
 }
 
 void VTCreateGraphicsTexture(VTRenderer* self)
