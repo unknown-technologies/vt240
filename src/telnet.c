@@ -584,6 +584,9 @@ void TELNETPoll(TELNET* telnet)
 		close(telnet->socket);
 		telnet->socket = -1;
 		TELNETRxError(telnet, "recv", str);
+	} else if(n == 0) {
+		telnet->socket = -1;
+		TELNETRxError(telnet, "recv", "Disconnected");
 	} else {
 		int i;
 		for(i = 0; i < n; i++) {
