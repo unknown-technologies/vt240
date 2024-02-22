@@ -26,7 +26,7 @@ CFLAGS		:=	$(OPT) -Wall -std=gnu99 \
 			-DGL_GLEXT_PROTOTYPES -DVT240_NO_BUFFER \
 			$(ASAN)
 
-LIBS		:=	-lGL -lGLU -lglut -lm
+LIBS		:=	-lGL -lglut -lm
 LDFLAGS		:=	-Wl,-x -Wl,--gc-sections $(LIBS) $(OPT) $(ASAN)
 
 CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
