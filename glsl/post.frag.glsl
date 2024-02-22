@@ -22,7 +22,7 @@ void main(void)
 {
 	// the VT220/VT240 has 240 lines
 	float line = pos.y * float(height);
-	float linebase = int(line);
+	float linebase = float(int(line));
 
 	float lineoffset = line - linebase;
 	float phi = 2.0 * M_PI * lineoffset;
@@ -30,7 +30,7 @@ void main(void)
 
 	// ... and 800 columns
 	float column = pos.x * float(width);
-	float colbase = int(column);
+	float colbase = float(int(column));
 
 	float xblend = column - colbase;
 

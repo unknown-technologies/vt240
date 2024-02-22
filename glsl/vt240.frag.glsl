@@ -99,9 +99,9 @@ uniform uvec2 text_size;
 
 uniform usampler2D font;
 uniform usampler2D text;
-uniform usampler1D line_attributes;
+uniform usampler2D line_attributes;
 uniform usampler2D setup_text;
-uniform usampler1D setup_line_attributes;
+uniform usampler2D setup_line_attributes;
 uniform sampler2D framebuffer;
 
 uniform uvec2 cursor;
@@ -209,7 +209,7 @@ void main(void)
 	// compute text cell and relative glyph coordinates
 	vec2 textpos = position / vec2(float(cell_width), float(cell_height));
 	uvec2 cell = uvec2(textpos);
-	uvec2 cell_pos = uvec2((textpos - cell) * vec2(float(cell_width), float(cell_height)));
+	uvec2 cell_pos = uvec2((textpos - vec2(cell)) * vec2(float(cell_width), float(cell_height)));
 
 	ivec2 cell_offset = ivec2(0);
 	if(in_setup) {
@@ -218,7 +218,7 @@ void main(void)
 
 	// retrieve glyph and attributes
 	ivec2 cellcoord = ivec2(cell) + cell_offset;
-	uint lineattr = texelFetch(line_attributes, cellcoord.y, 0).r;
+	uint lineattr = texelFetch(line_attributes, ivec2(cellcoord.y, 0), 0).r;
 
 	if(lineattr != DECSWL) {
 		cellcoord.x /= 2;
@@ -233,7 +233,7 @@ void main(void)
 		setupcell_pos.y = 0;
 	}
 
-	uint setuplineattr = texelFetch(setup_line_attributes, setupcell_pos.y, 0).r;
+	uint setuplineattr = texelFetch(setup_line_attributes, ivec2(setupcell_pos.y, 0), 0).r;
 	if(setuplineattr != DECSWL) {
 		setupcell_pos.x /= 2;
 	}
