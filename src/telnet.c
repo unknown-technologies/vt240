@@ -9,6 +9,7 @@
 #else
 #include <netdb.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #endif
 
 #include "types.h"

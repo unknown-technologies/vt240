@@ -13,16 +13,23 @@
 
 #include <math.h>
 
+#include <unistd.h>
+#include <errno.h>
+#include <pwd.h>
+#include <sys/types.h>
+
 #include "types.h"
 #include "vt.h"
 #include "renderer.h"
 #include "telnet.h"
+#include "pty.h"
 
 #define	SCREEN_WIDTH		800
 #define	SCREEN_HEIGHT		480
 
 static bool enable_glow = true;
 static bool use_telnet = false;
+static bool use_pty = false;
 static bool is_fullscreen = false;
 
 static int screen_width;
@@ -31,6 +38,7 @@ static int screen_height;
 static VT240 vt;
 static VTRenderer renderer;
 static TELNET telnet;
+static PTY pty;
 
 static unsigned long time = 0;
 
@@ -96,6 +104,10 @@ void process(void)
 
 	if(use_telnet) {
 		TELNETPoll(&telnet);
+	}
+
+	if(use_pty) {
+		PTYPoll(&pty);
 	}
 
 	VT240Process(&vt, dt);
@@ -308,26 +320,94 @@ static void telnet_tx(unsigned char c)
 	TELNETSend(&telnet, c);
 }
 
-int main(int argc, char** argv)
+static void pty_rx(unsigned char c)
+{
+	VT240Receive(&vt, c);
+}
+
+static void pty_tx(unsigned char c)
+{
+	PTYSend(&pty, c);
+}
+
+static void print_usage(const char* self)
+{
+	printf("Usage: %s [-f modestring] [-g] [-s command | hostname port]\n", self);
+}
+
+char** get_default_argv(void)
+{
+	struct passwd* pwd;
+	errno = 0;
+	char* shell = NULL;
+	uid_t uid = getuid();
+	while((pwd = getpwent())) {
+		if(pwd->pw_uid == uid) {
+			shell = strdup(pwd->pw_shell);
+			break;
+		} else {
+			errno = 0;
+		}
+	}
+	if(errno) {
+		perror("getpwent");
+		exit(1);
+	}
+	endpwent();
+
+	if(!shell) {
+		printf("Failed to get default shell\n");
+		exit(1);
+	}
+
+	char** argv = (char**) malloc(2 * sizeof(char*));
+	argv[0] = shell;
+	argv[1] = NULL;
+	return argv;
+}
+
+int main(int argc, char** argv, char** envp)
 {
 	const char* self = *argv;
 	char* modestring = NULL;
-	int use_game_mode = 0;
+	bool use_game_mode = false;
+	char** shell = NULL;
+	const char* hostname = NULL;
+	int port;
+
 	argc--;
 	argv++;
-	if(argc > 1 && !strcmp(argv[0], "-f")) {
-		modestring = argv[1];
-		argc -= 2;
-		argv += 2;
-	}
-	if(argc > 0 && !strcmp(argv[0], "-g")) {
-		enable_glow = false;
-		argc--;
-		argv++;
-	}
-	if(argc != 0 && argc != 2) {
-		printf("Usage: %s [-f modestring] [-g] [hostname port]\n", self);
-		exit(0);
+	for(int i = 0; i < argc; i++) {
+		char* arg = argv[i];
+		if(!strcmp(arg, "-f")) {
+			if(i + 1 >= argc) {
+				print_usage(self);
+				return 1;
+			}
+			modestring = argv[i + 1];
+			i++;
+		} else if(!strcmp(arg, "-g")) {
+			enable_glow = false;
+		} else if(!strcmp(arg, "-s")) {
+			if(i + 1 >= argc) {
+				// use default shell
+				shell = get_default_argv();
+			} else {
+				shell = &argv[i + 1];
+			}
+			break;
+		} else if(!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
+			print_usage(self);
+			return 0;
+		} else {
+			if(i + 2 > argc) {
+				print_usage(self);
+				return 1;
+			}
+			hostname = argv[i];
+			port = atoi(argv[i + 1]);
+			break;
+		}
 	}
 
 	glutInit(&argc, argv);
@@ -340,7 +420,7 @@ int main(int argc, char** argv)
 		int possible = glutGameModeGet(GLUT_GAME_MODE_POSSIBLE);
 		if(possible) {
 			glutEnterGameMode();
-			use_game_mode = 1;
+			use_game_mode = true;
 		} else {
 			printf("Cannot use mode string \"%s\"\n", modestring);
 		}
@@ -406,9 +486,7 @@ int main(int argc, char** argv)
 
 	GL_ERROR();
 
-	if(argc == 2) {
-		const char* hostname = argv[0];
-		const int port = atoi(argv[1]);
+	if(hostname) {
 		char buf[256];
 		use_telnet = true;
 
@@ -421,6 +499,16 @@ int main(int argc, char** argv)
 		vt.rx = telnet_tx;
 
 		TELNETConnect(&telnet, argv[0], atoi(argv[1]));
+	} else if(shell) {
+		use_pty = true;
+
+		VT240ReceiveText(&vt, "\x9b" "2J\x9bH\x9b" "12h\x9b?7h");
+
+		PTYInit(&pty);
+		PTYOpen(&pty, shell, envp);
+
+		pty.rx = pty_rx;
+		vt.rx = pty_tx;
 	}
 
 	// glutSetCursor(GLUT_CURSOR_NONE);

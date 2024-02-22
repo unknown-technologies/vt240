@@ -23,6 +23,7 @@ OPT		:=	-O3 -g
 CFLAGS		:=	$(OPT) -Wall -std=gnu99 \
 			-ffunction-sections -fdata-sections \
 			$(INCLUDE) -DUNIX \
+			-D_XOPEN_SOURCE=600 -D_DEFAULT_SOURCE \
 			-DGL_GLEXT_PROTOTYPES -DVT240_NO_BUFFER \
 			$(ASAN)
 
