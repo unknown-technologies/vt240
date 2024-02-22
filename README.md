@@ -108,6 +108,10 @@ on a Windows computer many years ago, but even this is currently untested.
 Screenshots
 -----------
 
+vim in a screen session:
+
 ![VIM in a screen session](https://raw.githubusercontent.com/unknown-technologies/vt240/master/doc/vt240-vim.png)
+
+Sixel graphics in action:
 
 ![Sixel graphics](https://raw.githubusercontent.com/unknown-technologies/vt240/master/doc/vt240-e1.png)
