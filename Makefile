@@ -8,6 +8,8 @@ export	SIZE	:=	$(PREFIX)size
 export	BIN2O	:=	bin2o
 export	GLSLANG	:=	glslang
 
+export	NDEBUG
+
 #-------------------------------------------------------------------------------
 .SUFFIXES:
 #-------------------------------------------------------------------------------
@@ -20,12 +22,18 @@ BUILD		:=	build
 ASAN		:=	#-fsanitize=address
 OPT		:=	-O3 -g
 
+ifdef NDEBUG
+DEBUG		:=	-DNDEBUG
+else
+DEBUG		:=
+endif
+
 CFLAGS		:=	$(OPT) -Wall -std=gnu99 \
 			-ffunction-sections -fdata-sections \
 			$(INCLUDE) -DUNIX \
 			-D_XOPEN_SOURCE=600 -D_DEFAULT_SOURCE \
 			-DGL_GLEXT_PROTOTYPES -DVT240_NO_BUFFER \
-			$(ASAN)
+			$(DEBUG) $(ASAN)
 
 LIBS		:=	-lGL -lglut -lm
 LDFLAGS		:=	-Wl,-x -Wl,--gc-sections $(LIBS) $(OPT) $(ASAN)
