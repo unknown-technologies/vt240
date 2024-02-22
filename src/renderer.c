@@ -68,8 +68,12 @@ extern const char post_frag[];
 extern const char blur_vert[];
 extern const char blur_frag[];
 
+#ifdef NDEBUG
+#define GL_ERROR()
+#else
 extern void check_error(const char* filename, unsigned int line);
 #define	GL_ERROR()	check_error(__FILE__, __LINE__)
+#endif
 
 static const float quad_vertices[] = {
 	-1.0f, -1.0f,  0.0f,
@@ -219,8 +223,8 @@ void VTRenderTerminal(VTRenderer* self)
 	glUniform1i(self->vt_shader_text, 1);
 
 	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_1D, self->line_attrib_tex);
-	glTexImage1D(GL_TEXTURE_1D, 0, GL_R8UI, TEXT_HEIGHT, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, (GLvoid*) self->vt->line_attributes);
+	glBindTexture(GL_TEXTURE_2D, self->line_attrib_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, TEXT_HEIGHT, 1, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, (GLvoid*) self->vt->line_attributes);
 	glUniform1i(self->vt_shader_line_attributes, 2);
 
 	glActiveTexture(GL_TEXTURE3);
@@ -229,8 +233,8 @@ void VTRenderTerminal(VTRenderer* self)
 	glUniform1i(self->vt_shader_setup_text, 3);
 
 	glActiveTexture(GL_TEXTURE4);
-	glBindTexture(GL_TEXTURE_1D, self->setup_line_attrib_tex);
-	glTexImage1D(GL_TEXTURE_1D, 0, GL_R8UI, SETUP_TEXT_HEIGHT, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, (GLvoid*) self->vt->setup.line_attributes);
+	glBindTexture(GL_TEXTURE_2D, self->setup_line_attrib_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, SETUP_TEXT_HEIGHT, 1, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, (GLvoid*) self->vt->setup.line_attributes);
 	glUniform1i(self->vt_shader_setup_line_attributes, 4);
 
 	glActiveTexture(GL_TEXTURE5);
@@ -377,10 +381,10 @@ void VTCreateTextTexture(VTRenderer* self)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	glGenTextures(1, &self->line_attrib_tex);
-	glBindTexture(GL_TEXTURE_1D, self->line_attrib_tex);
-	glTexImage1D(GL_TEXTURE_1D, 0, GL_R8UI, TEXT_HEIGHT, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glBindTexture(GL_TEXTURE_2D, self->line_attrib_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, TEXT_HEIGHT, 1, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	GL_ERROR();
 
 	// setup mode
@@ -391,10 +395,10 @@ void VTCreateTextTexture(VTRenderer* self)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	glGenTextures(1, &self->setup_line_attrib_tex);
-	glBindTexture(GL_TEXTURE_1D, self->setup_line_attrib_tex);
-	glTexImage1D(GL_TEXTURE_1D, 0, GL_R8UI, SETUP_TEXT_HEIGHT, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glBindTexture(GL_TEXTURE_2D, self->setup_line_attrib_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, SETUP_TEXT_HEIGHT, 1, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	GL_ERROR();
 }
 
@@ -485,7 +489,10 @@ GLuint VTCompileShader(GLuint type, const char* src)
 		if(len) {
 			char* log = (char*) malloc(len);
 			glGetShaderInfoLog(shader, len, &len, log);
-			printf("shader compilation log:\n%s\n", log);
+			// emscripten shit can't get this right
+			if(len) {
+				printf("shader compilation log:\n%s\n", log);
+			}
 			free(log);
 		}
 	}
@@ -534,7 +541,10 @@ GLuint VTCreateShader(const char* vs_src, const char* fs_src)
 			char* log = (char*) malloc(len);
 			glGetProgramInfoLog(shader, len, &len, log);
 
-			printf("Shader linking error log:\n%s\n", log);
+			// emscripten shit can't get this right
+			if(len) {
+				printf("Shader linking error log:\n%s\n", log);
+			}
 
 			free(log);
 		}

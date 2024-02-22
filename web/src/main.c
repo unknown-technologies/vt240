@@ -1,7 +1,3 @@
-#ifdef _WIN32
-#include <windows.h>
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -9,20 +5,21 @@
 #include <GL/gl.h>
 #include <GL/glext.h>
 #include <GL/glut.h>
-#include <GL/freeglut_ext.h>
 
 #include <math.h>
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten/html5.h>
+#endif
 
 #include "types.h"
 #include "vt.h"
 #include "renderer.h"
-#include "telnet.h"
 
 #define	SCREEN_WIDTH		800
 #define	SCREEN_HEIGHT		480
 
 static bool enable_glow = true;
-static bool use_telnet = false;
 static bool is_fullscreen = false;
 
 static int screen_width;
@@ -30,24 +27,8 @@ static int screen_height;
 
 static VT240 vt;
 static VTRenderer renderer;
-static TELNET telnet;
 
-static unsigned long time = 0;
-
-#ifdef _WIN32
-PFNGLGENFRAMEBUFFERSPROC	glGenFramebuffers;
-PFNGLBINDFRAMEBUFFERPROC	glBindFramebuffer;
-PFNGLFRAMEBUFFERTEXTURE2DPROC	glFramebufferTexture2D;
-PFNGLCHECKFRAMEBUFFERSTATUSPROC	glCheckFramebufferStatus;
-
-static void load_gl_extensions(void)
-{
-	glGenFramebuffers = (PFNGLGENFRAMEBUFFERSPROC)wglGetProcAddress("glGenFramebuffers");
-	glBindFramebuffer = (PFNGLBINDFRAMEBUFFERPROC)wglGetProcAddress("glBindFramebuffer");
-	glFramebufferTexture2D = (PFNGLFRAMEBUFFERTEXTURE2DPROC)wglGetProcAddress("glFramebufferTexture2D");
-	glCheckFramebufferStatus = (PFNGLCHECKFRAMEBUFFERSTATUSPROC)wglGetProcAddress("glCheckFramebufferStatus");
-}
-#endif
+static unsigned long current_time = 0;
 
 #ifdef NDEBUG
 #define GL_ERROR()
@@ -88,20 +69,30 @@ void check_error(const char* filename, unsigned int line)
 }
 #endif
 
+#ifdef __EMSCRIPTEN__
+static void check_for_reshape()
+{
+	double canvas_width;
+	double canvas_height;
+
+	emscripten_get_element_css_size("#canvas", &canvas_width, &canvas_height);
+
+	if((int) canvas_width != screen_width || (int) canvas_height != screen_height) {
+		glutReshapeWindow((int) canvas_width, (int) canvas_height);
+	}
+}
+#endif
+
 void process(void)
 {
 	unsigned long now = glutGet(GLUT_ELAPSED_TIME);
 
-	unsigned long dt = now - time;
-
-	if(use_telnet) {
-		TELNETPoll(&telnet);
-	}
+	unsigned long dt = now - current_time;
 
 	VT240Process(&vt, dt);
 	VTProcess(&renderer, dt);
 
-	time = now;
+	current_time = now;
 }
 
 void reshape_func(int width, int height)
@@ -131,6 +122,14 @@ void kb_up_func(unsigned char key, int x, int y)
 void special_func(int key, int x, int y)
 {
 	switch(key) {
+#ifdef __EMSCRIPTEN__
+		case 111:
+			VT240KeyDown(&vt, VT240_KEY_REMOVE);
+			break;
+		case 120:
+			VT240KeyDown(&vt, BS);
+			break;
+#endif
 		case GLUT_KEY_F1:
 			VT240KeyDown(&vt, VT240_KEY_HOLD_SCREEN);
 			break;
@@ -151,10 +150,7 @@ void special_func(int key, int x, int y)
 			break;
 		case GLUT_KEY_F5:
 			// VT240KeyDown(&vt, VT240_KEY_BREAK);
-			if(use_telnet) {
-				TELNETDisconnect(&telnet);
-			}
-			exit(0);
+			// exit(0);
 			break;
 		case GLUT_KEY_F6:
 			VT240KeyDown(&vt, VT240_KEY_F6);
@@ -210,6 +206,14 @@ void special_func(int key, int x, int y)
 void special_up_func(int key, int x, int y)
 {
 	switch(key) {
+#ifdef __EMSCRIPTEN__
+		case 111:
+			VT240KeyUp(&vt, VT240_KEY_REMOVE);
+			break;
+		case 120:
+			VT240KeyUp(&vt, BS);
+			break;
+#endif
 		case GLUT_KEY_F1:
 			VT240KeyUp(&vt, VT240_KEY_HOLD_SCREEN);
 			break;
@@ -283,8 +287,7 @@ void print_ch(unsigned char c)
 		return;
 	}
 
-	putc(c, stdout);
-	fflush(stdout);
+	// nothing for now
 }
 
 void display_func(void)
@@ -292,65 +295,50 @@ void display_func(void)
 	GL_ERROR();
 	process();
 
+#ifdef __EMSCRIPTEN__
+	check_for_reshape();
+#endif
+
 	VTRender(&renderer, screen_width, screen_height);
 	GL_ERROR();
 
 	glutSwapBuffers();
 }
 
-static void telnet_rx(unsigned char c)
-{
-	VT240Receive(&vt, c);
-}
-
-static void telnet_tx(unsigned char c)
-{
-	TELNETSend(&telnet, c);
-}
-
 int main(int argc, char** argv)
 {
-	const char* self = *argv;
-	char* modestring = NULL;
-	int use_game_mode = 0;
-	argc--;
-	argv++;
-	if(argc > 1 && !strcmp(argv[0], "-f")) {
-		modestring = argv[1];
-		argc -= 2;
-		argv += 2;
-	}
-	if(argc > 0 && !strcmp(argv[0], "-g")) {
-		enable_glow = false;
-		argc--;
-		argv++;
-	}
-	if(argc != 0 && argc != 2) {
-		printf("Usage: %s [-f modestring] [-g] [hostname port]\n", self);
-		exit(0);
-	}
-
+#ifdef __EMSCRIPTEN__
+	// hack to get ctrl-key work in a somewhat useful way
+	EM_ASM(
+		let __old_getASCIIKey = GLUT.getASCIIKey;
+		GLUT.getASCIIKey = function(e) {
+			if(e.ctrlKey) {
+				let evt = {};
+				evt.ctrlKey = false;
+				evt.altKey = false;
+				evt.metaKey = false;
+				evt.shiftKey = e.shiftKey;
+				evt.keyCode = e.keyCode;
+				let result = __old_getASCIIKey(evt);
+				if(result != null && result >= 97 && result <= 122) {
+					return result - 97;
+				} else {
+					return null;
+				}
+			} else {
+				return __old_getASCIIKey(e);
+			}
+		};
+	);
+#endif
 	glutInit(&argc, argv);
 	// glutInitContextVersion(4, 6);
 	// glutInitContextProfile(GLUT_CORE_PROFILE);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
 
-	if(modestring) {
-		glutGameModeString(modestring);
-		int possible = glutGameModeGet(GLUT_GAME_MODE_POSSIBLE);
-		if(possible) {
-			glutEnterGameMode();
-			use_game_mode = 1;
-		} else {
-			printf("Cannot use mode string \"%s\"\n", modestring);
-		}
-	}
-
-	if(!use_game_mode) {
-		glutInitWindowSize(SCREEN_WIDTH, SCREEN_HEIGHT);
-		// glutInitWindowPosition(100, 100);
-		glutCreateWindow("VT240");
-	}
+	glutInitWindowSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+	// glutInitWindowPosition(100, 100);
+	glutCreateWindow("VT240");
 
 	const unsigned char* gl_vendor = glGetString(GL_VENDOR);
 	const unsigned char* gl_renderer = glGetString(GL_RENDERER);
@@ -363,10 +351,6 @@ int main(int argc, char** argv)
 	printf("GLSL Version: %s\n", gl_glsl_version);
 
 	printf("using depth buffer with %d bit\n", glutGet(GLUT_WINDOW_DEPTH_SIZE));
-
-#ifdef _WIN32
-	load_gl_extensions();
-#endif
 
 	int num_ext = 0;
 	glGetIntegerv(GL_NUM_EXTENSIONS, &num_ext);
@@ -388,7 +372,7 @@ int main(int argc, char** argv)
 	glutSpecialFunc(special_func);
 	glutSpecialUpFunc(special_up_func);
 
-	glutIgnoreKeyRepeat(1);
+	//glutIgnoreKeyRepeat(1);
 
 	VT240Init(&vt, 80, 24);
 	vt.rx = print_ch;
@@ -406,26 +390,9 @@ int main(int argc, char** argv)
 
 	GL_ERROR();
 
-	if(argc == 2) {
-		const char* hostname = argv[0];
-		const int port = atoi(argv[1]);
-		char buf[256];
-		use_telnet = true;
-
-		VT240ReceiveText(&vt, "\x9b" "2J\x9bH\x9b" "12h\x9b?7h");
-		sprintf(buf, "Connecting to %s on port %d\r\n", hostname, port);
-		VT240ReceiveText(&vt, buf);
-
-		TELNETInit(&telnet);
-		telnet.rx = telnet_rx;
-		vt.rx = telnet_tx;
-
-		TELNETConnect(&telnet, argv[0], atoi(argv[1]));
-	}
-
 	// glutSetCursor(GLUT_CURSOR_NONE);
 
-	time = glutGet(GLUT_ELAPSED_TIME);
+	current_time = glutGet(GLUT_ELAPSED_TIME);
 	glutMainLoop();
 
 	return 0;
