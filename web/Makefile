@@ -26,7 +26,7 @@ CFLAGS		:=	$(OPT) -Wall -std=gnu99 \
 			-DGL_GLEXT_PROTOTYPES -DVT240_NO_BUFFER \
 			$(ASAN)
 
-LIBS		:=	-lGL -lglut -lm
+LIBS		:=	-lGL -lglut
 LDFLAGS		:=	-Wl,--gc-sections $(LIBS) $(OPT) $(ASAN) \
 			-sMIN_WEBGL_VERSION=2 -sMAX_WEBGL_VERSION=2
 
