@@ -132,25 +132,29 @@ void PTYOpen(PTY* pty, char** argv, char** envp)
 		// child
 		if(setsid() == (pid_t) -1) {
 			perror("setsid");
-			exit(1);
+			fflush(stderr);
+			_Exit(1);
 		}
 
 		char* slave_filename = ptsname(pty->master);
 		if(!slave_filename) {
 			perror("ptsname");
-			exit(1);
+			fflush(stderr);
+			_Exit(1);
 		}
 
 		int slave = open(slave_filename, O_RDWR);
 		if(slave == -1) {
 			perror("open");
-			exit(1);
+			fflush(stderr);
+			_Exit(1);
 		}
 
 		struct termios ttyattrs;
 		if(tcgetattr(slave, &ttyattrs)) {
 			perror("tcgetattr");
-			exit(1);
+			fflush(stderr);
+			_Exit(1);
 		}
 
 		// make sure echo is enabled
@@ -158,26 +162,31 @@ void PTYOpen(PTY* pty, char** argv, char** envp)
 
 		if(tcsetattr(slave, TCSANOW, &ttyattrs)) {
 			perror("tcsetattr");
-			exit(1);
+			fflush(stderr);
+			_Exit(1);
 		}
 
 		if(dup2(slave, STDIN_FILENO) == -1) {
 			perror("dup2");
-			exit(1);
+			fflush(stderr);
+			_Exit(1);
 		}
 		if(dup2(slave, STDOUT_FILENO) == -1) {
 			perror("dup2");
-			exit(1);
+			fflush(stderr);
+			_Exit(1);
 		}
 		if(dup2(slave, STDERR_FILENO) == -1) {
 			perror("dup2");
-			exit(1);
+			fflush(stderr);
+			_Exit(1);
 		}
 
 		// make stderr the controlling terminal
 		if(ioctl(2, TIOCSCTTY, 0) == -1) {
 			perror("ioctl");
-			exit(1);
+			fflush(stderr);
+			_Exit(1);
 		}
 
 		// close all other FDs
@@ -187,7 +196,8 @@ void PTYOpen(PTY* pty, char** argv, char** envp)
 		// now run the final program
 		if(execve(*argv, argv, env) == -1) {
 			perror("execve");
-			exit(1);
+			fflush(stderr);
+			_Exit(1);
 		}
 	}
 #endif
