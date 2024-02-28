@@ -1329,10 +1329,13 @@ void VT240SendPrimaryDA(VT240* vt)
 				break;
 			case VT240_VT100_TERMINAL_ID_VT101:
 				VT240SendText(vt, "\x1b[?1;0c");
+				break;
 			case VT240_VT100_TERMINAL_ID_VT102:
 				VT240SendText(vt, "\x1b[?6c");
+				break;
 			case VT240_VT100_TERMINAL_ID_VT125:
 				VT240SendText(vt, "\x1b[?12;7;1;10;102c");
+				break;
 		}
 	} else {
 		VT240SendText(vt, "\x9b?62;1;2;3;4;6;7;8;9c");
