@@ -117,7 +117,8 @@ void VTInitRenderer(VTRenderer* self, VT240* vt)
 	self->enable_glow = true;
 
 	self->vt_shader = VTCreateShader(vt240_vert, vt240_frag);
-	self->vt_shader_font = glGetUniformLocation(self->vt_shader, "font");
+	self->vt_shader_font_80 = glGetUniformLocation(self->vt_shader, "font_80");
+	self->vt_shader_font_132 = glGetUniformLocation(self->vt_shader, "font_132");
 	self->vt_shader_text = glGetUniformLocation(self->vt_shader, "text");
 	self->vt_shader_line_attributes = glGetUniformLocation(self->vt_shader, "line_attributes");
 	self->vt_shader_setup_text = glGetUniformLocation(self->vt_shader, "setup_text");
@@ -138,7 +139,6 @@ void VTInitRenderer(VTRenderer* self, VT240* vt)
 
 	self->post_shader = VTCreateShader(post_vert, post_frag);
 	self->post_shader_fbtex = glGetUniformLocation(self->post_shader, "vt240_screen");
-	self->post_shader_fbmask = glGetUniformLocation(self->post_shader, "vt240_mask");
 	self->post_shader_blurtex = glGetUniformLocation(self->post_shader, "blur_texture");
 	self->post_shader_enableglow = glGetUniformLocation(self->post_shader, "enable_glow");
 	GL_ERROR();
@@ -186,12 +186,8 @@ void VTRender(VTRenderer* self, unsigned int width, unsigned int height)
 	glUniform1i(self->post_shader_fbtex, 0);
 
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, self->vt_masktex);
-	glUniform1i(self->post_shader_fbmask, 1);
-
-	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, self->blur_tex[1]);
-	glUniform1i(self->post_shader_blurtex, 2);
+	glUniform1i(self->post_shader_blurtex, 1);
 
 	glUniform1i(self->post_shader_enableglow, self->enable_glow);
 
@@ -214,33 +210,37 @@ void VTRenderTerminal(VTRenderer* self)
 	glUseProgram(self->vt_shader);
 
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, self->font_tex);
-	glUniform1i(self->vt_shader_font, 0);
+	glBindTexture(GL_TEXTURE_2D, self->font_80_tex);
+	glUniform1i(self->vt_shader_font_80, 0);
 
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, self->text_tex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16UI, TEXT_WIDTH, TEXT_HEIGHT, 0, GL_RG_INTEGER, GL_UNSIGNED_SHORT, (GLvoid*) self->vt->text);
-	glUniform1i(self->vt_shader_text, 1);
+	glBindTexture(GL_TEXTURE_2D, self->font_132_tex);
+	glUniform1i(self->vt_shader_font_132, 1);
 
 	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, self->line_attrib_tex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, TEXT_HEIGHT, 1, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, (GLvoid*) self->vt->line_attributes);
-	glUniform1i(self->vt_shader_line_attributes, 2);
+	glBindTexture(GL_TEXTURE_2D, self->text_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16UI, self->vt->columns, TEXT_HEIGHT, 0, GL_RG_INTEGER, GL_UNSIGNED_SHORT, (GLvoid*) self->vt->text);
+	glUniform1i(self->vt_shader_text, 2);
 
 	glActiveTexture(GL_TEXTURE3);
-	glBindTexture(GL_TEXTURE_2D, self->setup_text_tex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16UI, TEXT_WIDTH, SETUP_TEXT_HEIGHT, 0, GL_RG_INTEGER, GL_UNSIGNED_SHORT, (GLvoid*) self->vt->setup.text);
-	glUniform1i(self->vt_shader_setup_text, 3);
+	glBindTexture(GL_TEXTURE_2D, self->line_attrib_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, TEXT_HEIGHT, 1, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, (GLvoid*) self->vt->line_attributes);
+	glUniform1i(self->vt_shader_line_attributes, 3);
 
 	glActiveTexture(GL_TEXTURE4);
-	glBindTexture(GL_TEXTURE_2D, self->setup_line_attrib_tex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, SETUP_TEXT_HEIGHT, 1, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, (GLvoid*) self->vt->setup.line_attributes);
-	glUniform1i(self->vt_shader_setup_line_attributes, 4);
+	glBindTexture(GL_TEXTURE_2D, self->setup_text_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16UI, self->vt->columns, SETUP_TEXT_HEIGHT, 0, GL_RG_INTEGER, GL_UNSIGNED_SHORT, (GLvoid*) self->vt->setup.text);
+	glUniform1i(self->vt_shader_setup_text, 4);
 
 	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_2D, self->setup_line_attrib_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, SETUP_TEXT_HEIGHT, 1, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, (GLvoid*) self->vt->setup.line_attributes);
+	glUniform1i(self->vt_shader_setup_line_attributes, 5);
+
+	glActiveTexture(GL_TEXTURE6);
 	glBindTexture(GL_TEXTURE_2D, self->graphics_tex);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*) self->vt->framebuffer);
-	glUniform1i(self->vt_shader_framebuffer, 5);
+	glUniform1i(self->vt_shader_framebuffer, 6);
 
 	glUniform2ui(self->vt_shader_text_size, self->vt->columns, self->vt->lines);
 	glUniform2ui(self->vt_shader_cursor, self->vt->cursor_x, self->vt->cursor_y);
@@ -259,7 +259,7 @@ void VTRenderTerminal(VTRenderer* self)
 	glDrawArrays(GL_TRIANGLES, 0, QUAD_VTX_CNT);
 
 	// unbind textures
-	for(unsigned int i = 0; i < 6; i++) {
+	for(unsigned int i = 0; i < 7; i++) {
 		glActiveTexture(GL_TEXTURE0 + i);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
@@ -361,10 +361,18 @@ void VTCreateGraphicsTexture(VTRenderer* self)
 
 void VTCreateFontTexture(VTRenderer* self)
 {
-	glGenTextures(1, &self->font_tex);
-	glBindTexture(GL_TEXTURE_2D, self->font_tex);
+	glGenTextures(1, &self->font_80_tex);
+	glBindTexture(GL_TEXTURE_2D, self->font_80_tex);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, FONT_WIDTH, FONT_HEIGHT, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, vt220font);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, FONT_WIDTH, FONT_HEIGHT, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, vt240_80colfont);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	GL_ERROR();
+
+	glGenTextures(1, &self->font_132_tex);
+	glBindTexture(GL_TEXTURE_2D, self->font_132_tex);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, FONT_WIDTH, FONT_HEIGHT, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, vt240_132colfont);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	GL_ERROR();
@@ -406,7 +414,6 @@ void VTCreateFrameBuffer(VTRenderer* self)
 {
 	glGenFramebuffers(1, &self->vt_fb);
 	glGenTextures(1, &self->vt_tex);
-	glGenTextures(1, &self->vt_masktex);
 
 	glBindTexture(GL_TEXTURE_2D, self->vt_tex);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
@@ -415,16 +422,8 @@ void VTCreateFrameBuffer(VTRenderer* self)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-	glBindTexture(GL_TEXTURE_2D, self->vt_masktex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
 	glBindFramebuffer(GL_FRAMEBUFFER, self->vt_fb);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self->vt_tex, 0);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, self->vt_masktex, 0);
 
 	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
 		printf("error configuring framebuffer\n");

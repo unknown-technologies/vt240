@@ -60,7 +60,8 @@
 
 const int width  = 800;
 const int height = 240;
-const int cell_width = 10;
+const int cell_width_80 = 10;
+const int cell_width_132 = 6;
 const int cell_height = 10;
 
 /* monochrome: normal */
@@ -97,7 +98,8 @@ const uvec2 vt240_colors_reverse[12] = uvec2[](
 
 uniform uvec2 text_size;
 
-uniform usampler2D font;
+uniform usampler2D font_80;
+uniform usampler2D font_132;
 uniform usampler2D text;
 uniform usampler2D line_attributes;
 uniform usampler2D setup_text;
@@ -179,7 +181,7 @@ uvec2 VT240GetColor(uint sgr, bool blink_on)
 	}
 }
 
-bool get_font_pixel(uint glyph, uvec2 pos)
+bool get_font_pixel(uint glyph, uvec2 pos, usampler2D font)
 {
 	ivec2 fontpos = ivec2(int(pos.y), int(glyph));
 
@@ -189,11 +191,15 @@ bool get_font_pixel(uint glyph, uvec2 pos)
 
 	uint bits = texelFetch(font, fontpos, 0).r;
 
+	bool is_fullcell = glyph >= 0x10Bu && glyph <= 0x119u;
+
 	bool bit;
 	if(pos.x > 0u && pos.x < 9u) {
 		bit = ((bits << (pos.x - 1u)) & 0x80u) != 0u;
-	} else if(pos.x == 9u) {
+	} else if(pos.x == 9u && is_fullcell) {
 		bit = (bits & 1u) != 0u;
+	} else if(is_fullcell) {
+		bit = (bits & 0x80u) != 0u;
 	} else {
 		bit = false;
 	}
@@ -203,8 +209,22 @@ bool get_font_pixel(uint glyph, uvec2 pos)
 
 void main(void)
 {
+	// is this VT240 in 80 or in 132 column mode?
+	bool is_132col = (mode & DECCOLM) != 0u;
+	int cell_width = is_132col ? cell_width_132 : cell_width_80;
+
 	// pixel position on the screen
 	vec2 position = pos * vec2(float(width), float(height));
+	bool blank = false;
+	if(is_132col) {
+		position.x -= 4.0;
+		if(position.x < 0.0) {
+			blank = true;
+			position.x = 0.0;
+		} else if(position.x >= 132.0 * float(cell_width)) {
+			blank = true;
+		}
+	}
 
 	// compute text cell and relative glyph coordinates
 	vec2 textpos = position / vec2(float(cell_width), float(cell_height));
@@ -226,9 +246,14 @@ void main(void)
 
 	uvec2 textcell = texelFetch(text, cellcoord, 0).rg;
 
+	// compute text cell and relative glyph coordinates for fixed 80 column mode
+	vec2 setup_position = pos * vec2(float(width), float(height));
+	vec2 setup_textpos = setup_position / vec2(float(cell_width_80), float(cell_height));
+	uvec2 setup_cell = uvec2(setup_textpos);
+	uvec2 setup_cell_pos = uvec2((setup_textpos - vec2(setup_cell)) * vec2(float(cell_width_80), float(cell_height)));
 	// maybe this is overwritten by the setup?
-	int setupline = int(cell.y) - (int(text_size.y) - 8);
-	ivec2 setupcell_pos = ivec2(int(cell.x), setupline); 
+	int setupline = int(setup_cell.y) - (int(text_size.y) - 8);
+	ivec2 setupcell_pos = ivec2(int(setup_cell.x), setupline);
 	if(setupline < 0) {
 		setupcell_pos.y = 0;
 	}
@@ -242,6 +267,11 @@ void main(void)
 	if(in_setup && setupline >= 0) {
 		textcell = setupcell;
 		lineattr = setuplineattr;
+		blank = false;
+		is_132col = false;
+		cell_width = cell_width_80;
+		cell = setup_cell;
+		cell_pos = setup_cell_pos;
 	}
 
 	uint glyph = textcell.r;
@@ -253,19 +283,11 @@ void main(void)
 
 		uint x = cell_pos.x;
 		if(cell1) {
-			x += 10u;
+			x += uint(cell_width);
 		}
 
 		cell.x /= 2u;
 		cell_pos.x = x / 2u;
-
-		// in case of double wide lines, there would be a 2px gap at the
-		// beginning of the cell; fix it by moving everything left by
-		// one pixel = half a font pixel
-
-		if((x % 2u) == 1u && cell_pos.x < 9u) {
-			cell_pos.x += 1u;
-		}
 
 		// now do the upper/lower stuff too
 		if(lineattr == DECDHL_TOP) {
@@ -277,7 +299,12 @@ void main(void)
 	}
 
 	// get glyph bit
-	bool bit = get_font_pixel(glyph, cell_pos);
+	bool bit;
+	if(is_132col) {
+		bit = get_font_pixel(glyph, cell_pos, font_132);
+	} else {
+		bit = get_font_pixel(glyph, cell_pos, font_80);
+	}
 
 ////////////////////////////////////////////////////////////////////////////////
 	bool blink_on = blink_time < BLINK_ON_TIME;
@@ -309,7 +336,11 @@ void main(void)
 	uvec2 colors = VT240GetColor(attr, blink_on);
 	vec3 text_color = colorscheme[bit ? colors.y : colors.x];
 
-	// graphics framebuffer for Sixel/REGIS
+	if(blank) {
+		text_color = vec3(0.0);
+	}
+
+	// graphics framebuffer for Sixel/ReGIS
 	// adjust the position if we are in setup mode
 	vec2 fbpos = pos.xy;
 	if(in_setup) {

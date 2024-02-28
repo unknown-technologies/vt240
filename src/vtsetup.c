@@ -57,19 +57,34 @@ const char* VT240SetupGetTitle(VT240* vt)
 
 void VT240SetupEraseDisplay(VT240* vt)
 {
-	memset(vt->setup.text, 0, 8 * vt->columns * sizeof(VT240CELL));
+	memset(vt->setup.text, 0x20, 8 * 132 * sizeof(VT240CELL));
 	memset(vt->setup.line_attributes, 0, 8);
 }
 
 void VT240SetupEraseLine(VT240* vt)
 {
-	memset(&vt->setup.text[vt->setup.write_y * vt->columns], 0, vt->columns * sizeof(VT240CELL));
+	memset(&vt->setup.text[vt->setup.write_y * vt->columns], 0x20, vt->columns * sizeof(VT240CELL));
 }
 
 void VT240SetupWrite(VT240* vt, const unsigned char c, const int sgr)
 {
 	int idx = vt->setup.write_y * vt->columns + vt->setup.write_x;
-	vt->setup.text[idx].text = c == ' ' ? 0 : c;
+	vt->setup.text[idx].text = c;
+	vt->setup.text[idx].attr = sgr;
+
+	vt->setup.write_x++;
+	if(vt->setup.write_x >= vt->columns) {
+		vt->setup.write_y++;
+		if(vt->setup.write_y >= 8) {
+			vt->setup.write_y = 7;
+		}
+	}
+}
+
+void VT240SetupWriteRaw(VT240* vt, const u16 c, const int sgr)
+{
+	int idx = vt->setup.write_y * vt->columns + vt->setup.write_x;
+	vt->setup.text[idx].text = c;
 	vt->setup.text[idx].attr = sgr;
 
 	vt->setup.write_x++;
@@ -127,6 +142,13 @@ void VT240SetupWriteString(VT240* vt, const char* s, const int sgr)
 	}
 }
 
+void VT240SetupFillRaw(VT240* vt, const u16 c, unsigned int count, const int sgr)
+{
+	for(; count; count--) {
+		VT240SetupWriteRaw(vt, c, sgr);
+	}
+}
+
 void VT240SetupWriteNumber(VT240* vt, int val, const int width, const int sgr)
 {
 	char buf[8];
@@ -165,8 +187,7 @@ void VT240SetupShowTitle(VT240* vt)
 void VT240SetupShowStatus(VT240* vt)
 {
 	VT240SetupGoto(vt, 7, 1);
-	VT240SetupWriteString(vt, "________________________________________"
-				  "________________________________________", 0);
+	VT240SetupFillRaw(vt, 0x113, 80, 0);
 	VT240SetupGoto(vt, 8, 2);
 	VT240SetupEraseLine(vt);
 	if(vt->mode & IRM) {
@@ -380,7 +401,13 @@ void VT240SetupShowDisplay(VT240* vt)
 
 void VT240SetupShowGeneral(VT240* vt)
 {
-	if(vt->setup.cursor_x > 2) {
+	if(vt->vt100_mode) {
+		if(vt->setup.cursor_y == 0 && vt->setup.cursor_x > 3) {
+			vt->setup.cursor_x = 3;
+		} else if(vt->setup.cursor_y > 0 && vt->setup.cursor_x > 2) {
+			vt->setup.cursor_x = 2;
+		}
+	} else if(vt->setup.cursor_x > 2) {
 		vt->setup.cursor_x = 2;
 	}
 
@@ -391,13 +418,35 @@ void VT240SetupShowGeneral(VT240* vt)
 	VT240SetupCursorRight(vt);
 	VT240SetupWriteString(vt, " To Directory ", GET_SGR(0, 1));
 	VT240SetupCursorRight(vt);
-	/* TODO: add VT100 mode + identifier */
 	if(!(vt->mode & DECANM)) {
 		VT240SetupWriteString(vt, " VT52 Mode                  ", GET_SGR(0, 2));
+	} else if(vt->vt100_mode) {
+		VT240SetupWriteString(vt, " VT100 Mode                 ", GET_SGR(0, 2));
 	} else if(vt->ct_7bit) {
 		VT240SetupWriteString(vt, " VT200 Mode, 7 Bit Controls ", GET_SGR(0, 2));
 	} else {
 		VT240SetupWriteString(vt, " VT200 Mode, 8 Bit Controls ", GET_SGR(0, 2));
+	}
+
+	if(vt->vt100_mode) {
+		VT240SetupCursorRight(vt);
+		switch(vt->config.vt100_terminal_id) {
+			case VT240_VT100_TERMINAL_ID_VT240:
+				VT240SetupWriteString(vt, " VT240 ID ", GET_SGR(0, 3));
+				break;
+			case VT240_VT100_TERMINAL_ID_VT100:
+				VT240SetupWriteString(vt, " VT100 ID ", GET_SGR(0, 3));
+				break;
+			case VT240_VT100_TERMINAL_ID_VT101:
+				VT240SetupWriteString(vt, " VT101 ID ", GET_SGR(0, 3));
+				break;
+			case VT240_VT100_TERMINAL_ID_VT102:
+				VT240SetupWriteString(vt, " VT102 ID ", GET_SGR(0, 3));
+				break;
+			case VT240_VT100_TERMINAL_ID_VT125:
+				VT240SetupWriteString(vt, " VT125 ID ", GET_SGR(0, 3));
+				break;
+		}
 	}
 
 	/* line 2 */
@@ -910,6 +959,15 @@ void VT240SetupDirectoryEnter(VT240* vt)
 					VT240SetCursor(vt, 1, 1);
 					VT240SetupShowDone(vt);
 					break;
+				case 3: /* Reset */
+					VT240SoftReset(vt);
+					VT240SetupShowDone(vt);
+					break;
+				case 4: /* Recall */
+					VT240HardReset(vt);
+					VT240SetupShow(vt);
+					VT240SetupShowDone(vt);
+					break;
 			}
 			break;
 		case 2:
@@ -931,6 +989,28 @@ void VT240SetupDisplayEnter(VT240* vt)
 					break;
 				case 1:
 					VT240SetupSetScreen(vt, SETUP_SCREEN_DIRECTORY);
+					break;
+				case 2:
+					if(vt->mode & DECCOLM) {
+						VT240ClearColumnMode(vt);
+					} else {
+						VT240SetColumnMode(vt);
+					}
+					VT240SetupShow(vt);
+					break;
+				case 3:
+					switch(vt->config.controls) {
+						case VT240_CONTROLS_INTERPRET_CONTROLS:
+							vt->config.controls = VT240_CONTROLS_DISPLAY_CONTROLS;
+							break;
+						case VT240_CONTROLS_DISPLAY_CONTROLS:
+							vt->config.controls = VT240_CONTROLS_REGIS;
+							break;
+						case VT240_CONTROLS_REGIS:
+							vt->config.controls = VT240_CONTROLS_INTERPRET_CONTROLS;
+							break;
+					}
+					VT240SetupShowScreen(vt);
 					break;
 			}
 			break;
@@ -982,13 +1062,60 @@ void VT240SetupGeneralEnter(VT240* vt)
 					break;
 				case 2:
 					if(!(vt->mode & DECANM)) {
+						/* was VT52, go to VT100 */
+						vt->mode |= DECANM;
+						vt->vt100_mode = 1;
+						vt->ct_7bit = 1;
+					} else if(vt->vt100_mode) {
+						/* was VT100, go to (tek) VT200, 7bit */
 						vt->mode |= DECANM;
 						vt->ct_7bit = 1;
+						vt->vt100_mode = 0;
 					} else if(vt->ct_7bit) {
 						vt->ct_7bit = 0;
 					} else {
 						vt->mode &= ~DECANM;
 					}
+					break;
+				case 3:
+					switch(vt->config.vt100_terminal_id) {
+						case VT240_VT100_TERMINAL_ID_VT240:
+							vt->config.vt100_terminal_id = VT240_VT100_TERMINAL_ID_VT100;
+							break;
+						case VT240_VT100_TERMINAL_ID_VT100:
+							vt->config.vt100_terminal_id = VT240_VT100_TERMINAL_ID_VT101;
+							break;
+						case VT240_VT100_TERMINAL_ID_VT101:
+							vt->config.vt100_terminal_id = VT240_VT100_TERMINAL_ID_VT102;
+							break;
+						case VT240_VT100_TERMINAL_ID_VT102:
+							vt->config.vt100_terminal_id = VT240_VT100_TERMINAL_ID_VT125;
+							break;
+						case VT240_VT100_TERMINAL_ID_VT125:
+							vt->config.vt100_terminal_id = VT240_VT100_TERMINAL_ID_VT240;
+							break;
+					}
+					VT240SetupShowScreen(vt);
+					break;
+			}
+			break;
+		case 1:
+			switch(vt->setup.cursor_x) {
+				case 0:
+					if(vt->config.user_defined_keys == VT240_USER_DEFINED_KEYS_UNLOCKED) {
+						vt->config.user_defined_keys = VT240_USER_DEFINED_KEYS_LOCKED;
+					} else {
+						vt->config.user_defined_keys = VT240_USER_DEFINED_KEYS_UNLOCKED;
+					}
+					VT240SetupShowScreen(vt);
+					break;
+				case 1:
+					if(vt->config.user_features == VT240_USER_FEATURES_UNLOCKED) {
+						vt->config.user_features = VT240_USER_FEATURES_LOCKED;
+					} else {
+						vt->config.user_features = VT240_USER_FEATURES_UNLOCKED;
+					}
+					VT240SetupShowScreen(vt);
 					break;
 			}
 			break;

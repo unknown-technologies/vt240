@@ -11,17 +11,18 @@ typedef struct {
 
 	GLuint		vt_fb;
 	GLuint		vt_tex;
-	GLuint		vt_masktex;
 
 	GLuint		graphics_tex;
-	GLuint		font_tex;
+	GLuint		font_80_tex;
+	GLuint		font_132_tex;
 	GLuint		text_tex;
 	GLuint		line_attrib_tex;
 	GLuint		setup_text_tex;
 	GLuint		setup_line_attrib_tex;
 
 	GLuint		vt_shader;
-	GLuint		vt_shader_font;
+	GLuint		vt_shader_font_80;
+	GLuint		vt_shader_font_132;
 	GLuint		vt_shader_text;
 	GLuint		vt_shader_line_attributes;
 	GLuint		vt_shader_setup_text;
@@ -45,7 +46,6 @@ typedef struct {
 
 	GLuint		post_shader;
 	GLuint		post_shader_fbtex;
-	GLuint		post_shader_fbmask;
 	GLuint		post_shader_blurtex;
 	GLuint		post_shader_enableglow;
 

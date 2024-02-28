@@ -49,7 +49,6 @@ void main(void)
 	// first sample: current pixel
 	ivec2 texcoord0 = ivec2(int(colbase), texline);
 	vec4 fb0 = texelFetch(vt240_screen, texcoord0, 0);
-	uint mask0 = texelFetch(vt240_mask, texcoord0, 0).r;
 
 	// second sample: current - 1
 	ivec2 texcoord1 = texcoord0 - ivec2(1, 0);
@@ -59,37 +58,12 @@ void main(void)
 	}
 
 	vec4 fb1 = texelFetch(vt240_screen, texcoord1, 0);
-	uint mask1 = texelFetch(vt240_mask, texcoord1, 0).r;
 	if(blank0) {
 		// blank it if we are outside of the screen
 		fb1 = vec4(0.0);
-		mask1 = 0u;
 	}
 
-	// third sample: current - 2
-	ivec2 texcoord2 = texcoord1 - ivec2(1, 0);
-	if(texcoord2.x < 0) {
-		texcoord2.x = 0;
-	}
-
-	vec4 fb2 = texelFetch(vt240_screen, texcoord2, 0);
-	uint mask2 = texelFetch(vt240_mask, texcoord2, 0).r;
-
-	// combine the samples with phosphor simulation
-	vec4 result;
-	if(mask1 > mask0) {
-		// sequence 'X10' => '1'
-		result = fb1;
-	} else if(mask2 > mask0) {
-		// sequence '100' => '0'
-		result = fb0 * vec4(xblend) + fb2 * vec4(1.0 - xblend);
-	} else if(mask2 > mask1) {
-		// sequence '101' => '1'
-		result = fb0 * vec4(xblend) + fb2 * vec4(1.0 - xblend);
-	} else {
-		// sequence 'X01' => '1'
-		result = fb0 * vec4(xblend) + fb1 * vec4(1.0 - xblend);
-	}
+	vec4 result = fb0 * vec4(xblend) + fb1 * vec4(1.0 - xblend);
 
 	// get glow
 	vec4 glow = pow(texture(blur_texture, pos), vec4(glow_control));

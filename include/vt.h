@@ -202,7 +202,6 @@ typedef struct {
 	int		buf_lost;
 	int		scroll;
 	int		state;
-	int		display_control;
 	u16		parameters[MAX_PARAMETERS];
 	int		parameter_id;
 	int		cursor_x;
@@ -219,6 +218,8 @@ typedef struct {
 	int		g_dst;
 	char*		tabstops;
 	int		ct_7bit;
+
+	int		vt100_mode;
 
 	int		use_xoff;
 	int		xoff;
@@ -275,6 +276,7 @@ typedef struct {
 	void		(*bell)(void);
 	void		(*keyclick)(void);
 	void		(*rx)(unsigned char);
+	void		(*resize)(unsigned int width, unsigned int height);
 } VT240;
 
 #define	CHARSET_DMCS	0 /* Multilangual */
@@ -387,7 +389,7 @@ typedef struct {
 
 int* VT240CreateTextureSheet(void);
 
-void VT240Init(VT240* vt, int columns, int lines);
+void VT240Init(VT240* vt);
 void VT240Destroy(VT240* vt);
 void VT240Process(VT240* vt, unsigned long dt);
 void VT240Receive(VT240* vt, unsigned char c);
@@ -430,6 +432,10 @@ void VT240EraseCharacter(VT240* vt, int n);
 void VT240EraseInLine(VT240* vt, int type);
 void VT240EraseInDisplay(VT240* vt, int type);
 void VT240SelectiveEraseInLine(VT240* vt, int type);
+void VT240SetColumnMode(VT240* vt);
+void VT240ClearColumnMode(VT240* vt);
+void VT240SetVT52Mode(VT240* vt);
+void VT240SetANSIMode(VT240* vt);
 void VT240ShiftOut(VT240* vt);
 void VT240ShiftIn(VT240* vt);
 void VT240Xon(VT240* vt);
@@ -453,7 +459,8 @@ void VT240ScrollUp(VT240* vt);
 void VT240ScrollDown(VT240* vt);
 void VT240SetTopBottomMargins(VT240* vt, int top, int bottom);
 void VT240EraseScreen(VT240* vt);
-void VT240Reset(VT240* vt);
+void VT240SoftReset(VT240* vt);
+void VT240HardReset(VT240* vt);
 int  VT240GetCharset(VT240* vt, unsigned char c);
 void VT240ProcessChar(VT240* vt, unsigned char c);
 void VT240ProcessKeys(VT240* vt);

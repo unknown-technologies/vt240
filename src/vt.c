@@ -8,9 +8,9 @@
 #include "vt.h"
 #include "vtfont.h"
 
-#define	CHAR_WIDTH		10
+#define	CHAR_WIDTH_80		10
+#define	CHAR_WIDTH_132		6
 #define	CHAR_HEIGHT		10
-#define	WIDE_CHAR_WIDTH		20
 
 #define	CURSOR_OFF_TIME		(2.0f / 3.0f)
 #define	CURSOR_ON_TIME		(4.0f / 3.0f)
@@ -22,6 +22,10 @@
 
 #define	FRAMEBUFFER_WIDTH	800
 #define	FRAMEBUFFER_HEIGHT	240
+
+#define	TEXT_WIDTH		80
+#define	TEXT_WIDTH_MAX		132
+#define	TEXT_HEIGHT		24
 
 #define	STATE_TEXT		0
 #define	STATE_ESC		1
@@ -38,10 +42,11 @@
 #define	STATE_ESC_SP		12
 #define	STATE_CSI_GT		13
 #define	STATE_CSI_QUOT		14
+#define	STATE_CSI_EXCL		15
 
 static const VT240NVR default_config = { 0 };
 
-void VT240Init(VT240* vt, int columns, int lines)
+void VT240Init(VT240* vt)
 {
 	vt->cursor_time = 0;
 	vt->config = default_config;
@@ -49,41 +54,13 @@ void VT240Init(VT240* vt, int columns, int lines)
 	vt->keys_down = (u16*) malloc(384 * sizeof(u16));
 	memset(vt->keys_down, 0, 384 * sizeof(u16));
 
-	vt->columns = columns;
-	vt->lines = lines;
+	vt->columns = TEXT_WIDTH;
+	vt->lines = TEXT_HEIGHT;
 
-	vt->text = (VT240CELL*) malloc(lines * columns * sizeof(VT240CELL));
-	vt->line_attributes = (char*) malloc(lines);
-	vt->tabstops = (char*) malloc(columns);
+	vt->text = (VT240CELL*) malloc(TEXT_WIDTH_MAX * TEXT_HEIGHT * sizeof(VT240CELL));
+	vt->line_attributes = (char*) malloc(TEXT_HEIGHT);
+	vt->tabstops = (char*) malloc(TEXT_WIDTH_MAX);
 	vt->framebuffer = (u32*) malloc(FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT * sizeof(u32));
-
-	vt->state = 0;
-	vt->display_control = vt->config.display;
-	vt->ct_7bit = vt->config.mode != VT240_MODE_VT200_MODE_8BIT_CONTROLS;
-
-	if(vt->config.mode != VT240_MODE_VT52_MODE) {
-		vt->mode |= DECANM;
-	}
-
-	if(vt->config.auto_wrap) {
-		vt->mode |= DECAWM;
-	}
-
-	if(vt->config.text_cursor == VT240_TEXT_CURSOR) {
-		vt->mode |= DECTCEM;
-	}
-
-	if(vt->config.new_line == VT240_NEW_LINE) {
-		vt->mode |= LNM;
-	}
-
-	if(vt->config.local_echo == VT240_NO_LOCAL_ECHO) {
-		vt->mode |= SRM;
-	}
-
-	if(vt->config.auto_repeat == VT240_AUTO_REPEAT) {
-		vt->mode |= DECARM;
-	}
 
 	vt->buf = (unsigned char*) malloc(2048); /* input buffer */
 	vt->buf_r = 0;
@@ -91,69 +68,66 @@ void VT240Init(VT240* vt, int columns, int lines)
 	vt->buf_used = 0;
 	vt->buf_lost = 0;
 
-	vt->xoff = 0;
-	vt->xoff_point = 64;
-	vt->xon_point = 16;
-	vt->use_xoff = 1;
-	vt->sent_xoff = 0;
-
-	memset(vt->answerback, 0, 31);
-
 	vt->bell = NULL;
 	vt->keyclick = NULL;
 	vt->rx = NULL;
 
-	vt->margin_top = 0;
-	vt->margin_bottom = lines - 1;
-
-	vt->gl = 0;
-	vt->gl_lock = 0;
-	vt->gr = 1;
-	vt->gr_lock = 1;
-	vt->g[0] = CHARSET_ASCII;
-	vt->g[1] = CHARSET_DEC_SUPPLEMENTAL;
-	vt->g[2] = CHARSET_DEC_SUPPLEMENTAL;
-	vt->g[3] = CHARSET_DEC_SUPPLEMENTAL;
-
-	vt->sgr = 0;
-
-	VT240SaveCursor(vt);
-
-	vt->fb_dirty = 0;
-
-	VT240Reset(vt);
-
 	/* configure setup screens */
 	vt->in_setup = 0;
-	vt->setup.text = (VT240CELL*) malloc(8 * columns * sizeof(VT240CELL));
+	vt->setup.text = (VT240CELL*) malloc(8 * TEXT_WIDTH_MAX * sizeof(VT240CELL));
 	vt->setup.line_attributes = (char*) malloc(8);
-	memset(vt->setup.text, 0, 8 * columns * sizeof(VT240CELL));
+	memset(vt->setup.text, 0x20, 8 * TEXT_WIDTH_MAX * sizeof(VT240CELL));
 	memset(vt->setup.line_attributes, 0, 8);
+
+	VT240HardReset(vt);
+}
+
+static inline unsigned int VT240GetCellWidth(VT240* vt)
+{
+	if(vt->mode & DECCOLM) {
+		/* 132 column mode */
+		return CHAR_WIDTH_132;
+	} else {
+		/* 80 column mode */
+		return CHAR_WIDTH_80;
+	}
+}
+
+static inline unsigned int VT240GetCellOffset(VT240* vt)
+{
+	if(vt->mode & DECCOLM) {
+		/* 132 column mode */
+		return 4;
+	} else {
+		/* 80 column mode */
+		return 0;
+	}
 }
 
 void VT240EraseGraphicsCell(VT240* vt, unsigned int cell)
 {
 	unsigned int x = cell % vt->columns;
 	unsigned int y = cell / vt->columns;
-	unsigned int px = x * CHAR_WIDTH;
+	unsigned int width = VT240GetCellWidth(vt);
+	unsigned int px = x * width + VT240GetCellOffset(vt);
 	unsigned int py = y * CHAR_HEIGHT;
 	for(unsigned int i = 0; i < CHAR_HEIGHT; i++) {
-		memset(&vt->framebuffer[(py + i) * FRAMEBUFFER_WIDTH + px], 0, CHAR_WIDTH * sizeof(u32));
+		memset(&vt->framebuffer[(py + i) * FRAMEBUFFER_WIDTH + px], 0, width * sizeof(u32));
 	}
 	vt->fb_dirty = 1;
 }
 
-void VT240Write(VT240* vt, u16 c)
+void VT240WriteGlyph(VT240* vt, u16 c, bool force_wrap)
 {
 	if(vt->cursor_x == vt->columns) {
-		if(vt->mode & DECAWM) { /* Auto Wrap Mode: enabled */
+		if(vt->mode & DECAWM || force_wrap) { /* Auto Wrap Mode: enabled */
 			VT240CarriageReturn(vt);
 			VT240Linefeed(vt);
 		} else {
 			vt->cursor_x--;
 		}
 	} else if(vt->line_attributes[vt->cursor_y] != DECSWL && 2 * vt->cursor_x >= vt->columns) {
-		if(vt->mode & DECAWM) { /* Auto Wrap Mode: enabled */
+		if(vt->mode & DECAWM || force_wrap) { /* Auto Wrap Mode: enabled */
 			VT240CarriageReturn(vt);
 			VT240Linefeed(vt);
 		} else {
@@ -181,6 +155,11 @@ void VT240Write(VT240* vt, u16 c)
 	}
 
 	VT240EraseGraphicsCell(vt, pos);
+}
+
+void VT240Write(VT240* vt, u16 c)
+{
+	VT240WriteGlyph(vt, c, false);
 }
 
 void VT240WriteChar(VT240* vt, unsigned char c)
@@ -211,52 +190,52 @@ void VT240WriteCS(VT240* vt, unsigned char ch, int cs)
 	const u16* cs_table = NULL;
 	switch(cs) {
 		case CHARSET_ASCII:
-			cs_table = vt220_cs_ascii;
+			cs_table = vt240_cs_ascii;
 			break;
 		case CHARSET_DEC_SUPPLEMENTAL:
-			cs_table = vt220_cs_dec_supplemental_graphics;
+			cs_table = vt240_cs_dec_supplemental_graphics;
 			break;
 		case CHARSET_DEC_SPECIAL_GRAPHICS:
-			cs_table = vt220_cs_dec_special_graphics;
+			cs_table = vt240_cs_dec_special_graphics;
 			break;
 		case CHARSET_NRCS_BRITISH:
-			cs_table = vt220_cs_british;
+			cs_table = vt240_cs_british;
 			break;
 		case CHARSET_NRCS_DUTCH:
-			cs_table = vt220_cs_dutch;
+			cs_table = vt240_cs_dutch;
 			break;
 		case CHARSET_NRCS_FINNISH:
-			cs_table = vt220_cs_finnish;
+			cs_table = vt240_cs_finnish;
 			break;
 		case CHARSET_NRCS_FRENCH:
-			cs_table = vt220_cs_french;
+			cs_table = vt240_cs_french;
 			break;
 		case CHARSET_NRCS_FRENCH_CANADIAN:
-			cs_table = vt220_cs_french_canadian;
+			cs_table = vt240_cs_french_canadian;
 			break;
 		case CHARSET_NRCS_GERMAN:
-			cs_table = vt220_cs_german;
+			cs_table = vt240_cs_german;
 			break;
 		case CHARSET_NRCS_ITALIAN:
-			cs_table = vt220_cs_italian;
+			cs_table = vt240_cs_italian;
 			break;
 		case CHARSET_NRCS_NORWEGIAN:
-			cs_table = vt220_cs_norwegian;
+			cs_table = vt240_cs_norwegian;
 			break;
 		case CHARSET_NRCS_SPANISH:
-			cs_table = vt220_cs_spanish;
+			cs_table = vt240_cs_spanish;
 			break;
 		case CHARSET_NRCS_SWEDISH:
-			cs_table = vt220_cs_swedish;
+			cs_table = vt240_cs_swedish;
 			break;
 		case CHARSET_NRCS_SWISS:
-			cs_table = vt220_cs_swiss;
+			cs_table = vt240_cs_swiss;
 			break;
 		case CHARSET_ASCII_DC:
-			cs_table = vt220_cs_ascii_dc;
+			cs_table = vt240_cs_ascii_dc;
 			break;
 		case CHARSET_DEC_SUPPLEMENTAL_DC:
-			cs_table = vt220_cs_dec_supplemental_graphics_dc;
+			cs_table = vt240_cs_dec_supplemental_graphics_dc;
 			break;
 	}
 
@@ -278,7 +257,7 @@ void VT240ClearLastColumnFlag(VT240* vt)
 	}
 }
 
-inline int VT240IsLastColumnFlag(VT240* vt)
+static inline int VT240IsLastColumnFlag(VT240* vt)
 {
 	if(vt->cursor_x == vt->columns) {
 		return 1;
@@ -586,7 +565,7 @@ void VT240ScrollUp(VT240* vt)
 	}
 
 	end = vt->margin_bottom * vt->columns;
-	memset(&vt->text[end], 0, vt->columns * sizeof(VT240CELL));
+	memset(&vt->text[end], 0x20, vt->columns * sizeof(VT240CELL));
 
 	/* scroll graphics framebuffer */
 	int startgx = (vt->margin_top + 1) * CHAR_HEIGHT * FRAMEBUFFER_WIDTH;
@@ -611,7 +590,7 @@ void VT240ScrollDown(VT240* vt)
 		vt->line_attributes[i + 1] = vt->line_attributes[i];
 	}
 
-	memset(&vt->text[start], 0, vt->columns * sizeof(VT240CELL));
+	memset(&vt->text[start], 0x20, vt->columns * sizeof(VT240CELL));
 
 	/* scroll graphics framebuffer */
 	int startgx = vt->margin_top * CHAR_HEIGHT * FRAMEBUFFER_WIDTH;
@@ -670,7 +649,7 @@ void VT240SetTopBottomMargins(VT240* vt, int top, int bottom)
 
 void VT240EraseScreen(VT240* vt)
 {
-	memset(vt->text, 0, vt->lines * vt->columns * sizeof(VT240CELL));
+	memset(vt->text, 0x20, vt->lines * vt->columns * sizeof(VT240CELL));
 	memset(vt->line_attributes, 0, vt->lines);
 	memset(vt->framebuffer, 0, FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT * sizeof(u32));
 	vt->fb_dirty = 1;
@@ -692,7 +671,7 @@ void VT240InsertLine(VT240* vt)
 		vt->line_attributes[i + 1] = vt->line_attributes[i];
 	}
 
-	memset(&vt->text[start], 0, vt->columns * sizeof(VT240CELL));
+	memset(&vt->text[start], 0x20, vt->columns * sizeof(VT240CELL));
 
 	vt->cursor_x = 0;
 }
@@ -728,7 +707,7 @@ void VT240DeleteLine(VT240* vt)
 	}
 
 	end = vt->margin_bottom * vt->columns;
-	memset(&vt->text[end], 0, vt->columns * sizeof(VT240CELL));
+	memset(&vt->text[end], 0x20, vt->columns * sizeof(VT240CELL));
 
 	vt->cursor_x = 0;
 }
@@ -765,7 +744,7 @@ void VT240InsertCharacter(VT240* vt)
 		vt->text[i + 1] = vt->text[i];
 	}
 
-	vt->text[cur].text = 0;
+	vt->text[cur].text = 0x20;
 	vt->text[cur].attr = 0;
 }
 
@@ -801,7 +780,7 @@ void VT240DeleteCharacter(VT240* vt)
 		vt->text[i] = vt->text[i + 1];
 	}
 
-	vt->text[eol].text = 0;
+	vt->text[eol].text = 0x20;
 	vt->text[eol].attr = 0;
 }
 
@@ -839,7 +818,7 @@ void VT240EraseCharacter(VT240* vt, int n)
 	start = vt->cursor_y * vt->columns + vt->cursor_x;
 
 	for(i = 0; i < cnt; i++) {
-		vt->text[start + i].text = 0;
+		vt->text[start + i].text = 0x20;
 		vt->text[start + i].attr = 0;
 	}
 }
@@ -862,21 +841,21 @@ void VT240EraseInLine(VT240* vt, int type)
 	switch(type) {
 		case EL_TO_END:
 			for(i = cur; i <= eol; i++) {
-				vt->text[i].text = 0;
+				vt->text[i].text = 0x20;
 				vt->text[i].attr = 0;
 				VT240EraseGraphicsCell(vt, i);
 			}
 			break;
 		case EL_FROM_BOL:
 			for(i = bol; i <= cur; i++) {
-				vt->text[i].text = 0;
+				vt->text[i].text = 0x20;
 				vt->text[i].attr = 0;
 				VT240EraseGraphicsCell(vt, i);
 			}
 			break;
 		case EL_WHOLE_LINE:
 			for(i = bol; i <= eol; i++) {
-				vt->text[i].text = 0;
+				vt->text[i].text = 0x20;
 				vt->text[i].attr = 0;
 				VT240EraseGraphicsCell(vt, i);
 			}
@@ -901,7 +880,7 @@ void VT240EraseInDisplay(VT240* vt, int type)
 	switch(type) {
 		case ED_TO_END:
 			for(i = cur; i < end; i++) {
-				vt->text[i].text = 0;
+				vt->text[i].text = 0x20;
 				vt->text[i].attr = 0;
 				VT240EraseGraphicsCell(vt, i);
 			}
@@ -912,7 +891,7 @@ void VT240EraseInDisplay(VT240* vt, int type)
 			break;
 		case ED_FROM_BEGIN:
 			for(i = 0; i <= cur; i++) {
-				vt->text[i].text = 0;
+				vt->text[i].text = 0x20;
 				vt->text[i].attr = 0;
 				VT240EraseGraphicsCell(vt, i);
 			}
@@ -923,7 +902,7 @@ void VT240EraseInDisplay(VT240* vt, int type)
 			break;
 		case ED_ALL:
 			for(i = 0; i < end; i++) {
-				vt->text[i].text = 0;
+				vt->text[i].text = 0x20;
 				vt->text[i].attr = 0;
 				VT240EraseGraphicsCell(vt, i);
 			}
@@ -954,7 +933,7 @@ void VT240SelectiveEraseInLine(VT240* vt, int type)
 		case EL_TO_END:
 			for(i = cur; i <= eol; i++) {
 				if(!(vt->text[i].attr & SCA_ON)) {
-					vt->text[i].text = 0;
+					vt->text[i].text = 0x20;
 					VT240EraseGraphicsCell(vt, i);
 				}
 			}
@@ -962,7 +941,7 @@ void VT240SelectiveEraseInLine(VT240* vt, int type)
 		case EL_FROM_BOL:
 			for(i = bol; i <= cur; i++) {
 				if(!(vt->text[i].attr & SCA_ON)) {
-					vt->text[i].text = 0;
+					vt->text[i].text = 0x20;
 					VT240EraseGraphicsCell(vt, i);
 				}
 			}
@@ -970,7 +949,7 @@ void VT240SelectiveEraseInLine(VT240* vt, int type)
 		case EL_WHOLE_LINE:
 			for(i = bol; i <= eol; i++) {
 				if(!(vt->text[i].attr & SCA_ON)) {
-					vt->text[i].text = 0;
+					vt->text[i].text = 0x20;
 					VT240EraseGraphicsCell(vt, i);
 				}
 			}
@@ -996,7 +975,7 @@ void VT240SelectiveEraseInDisplay(VT240* vt, int type)
 		case ED_TO_END:
 			for(i = cur; i < end; i++) {
 				if(!(vt->text[i].attr & SCA_ON)) {
-					vt->text[i].text = 0;
+					vt->text[i].text = 0x20;
 					VT240EraseGraphicsCell(vt, i);
 				}
 			}
@@ -1004,7 +983,7 @@ void VT240SelectiveEraseInDisplay(VT240* vt, int type)
 		case ED_FROM_BEGIN:
 			for(i = 0; i <= cur; i++) {
 				if(!(vt->text[i].attr & SCA_ON)) {
-					vt->text[i].text = 0;
+					vt->text[i].text = 0x20;
 					VT240EraseGraphicsCell(vt, i);
 				}
 			}
@@ -1012,7 +991,7 @@ void VT240SelectiveEraseInDisplay(VT240* vt, int type)
 		case ED_ALL:
 			for(i = 0; i < end; i++) {
 				if(!(vt->text[i].attr & SCA_ON)) {
-					vt->text[i].text = 0;
+					vt->text[i].text = 0x20;
 					VT240EraseGraphicsCell(vt, i);
 				}
 			}
@@ -1022,15 +1001,29 @@ void VT240SelectiveEraseInDisplay(VT240* vt, int type)
 void VT240SetColumnMode(VT240* vt)
 {
 	vt->mode |= DECCOLM;
+	vt->columns = TEXT_WIDTH_MAX;
 	VT240EraseInDisplay(vt, ED_ALL);
 	VT240SetCursor(vt, 1, 1);
+	vt->margin_top = 0;
+	vt->margin_bottom = vt->lines - 1;
+
+	if(vt->resize) {
+		vt->resize(vt->columns, vt->lines);
+	}
 }
 
 void VT240ClearColumnMode(VT240* vt)
 {
 	vt->mode &= ~DECCOLM;
+	vt->columns = TEXT_WIDTH;
 	VT240EraseInDisplay(vt, ED_ALL);
 	VT240SetCursor(vt, 1, 1);
+	vt->margin_top = 0;
+	vt->margin_bottom = vt->lines - 1;
+
+	if(vt->resize) {
+		vt->resize(vt->columns, vt->lines);
+	}
 }
 
 void VT240SetVT52Mode(VT240* vt)
@@ -1049,6 +1042,10 @@ void VT240SetANSIMode(VT240* vt)
 	vt->state = STATE_TEXT;
 	vt->gl = 0;
 	vt->gl_lock = 0;
+
+	/* go to VT100 mode */
+	vt->ct_7bit = 1;
+	vt->vt100_mode = 1;
 }
 
 void VT240Adjustments(VT240* vt)
@@ -1080,7 +1077,7 @@ void VT240SetLineMode(VT240* vt, int mode)
 		case DECDHL_TOP:
 		case DECDHL_BOTTOM:
 		case DECDWL:
-			memset(&vt->text[vt->cursor_y * vt->columns + startX], 0, count * sizeof(VT240CELL));
+			memset(&vt->text[vt->cursor_y * vt->columns + startX], 0x20, count * sizeof(VT240CELL));
 			if(2 * vt->cursor_x >= vt->columns) {
 				vt->cursor_x = (vt->columns - 1) / 2;
 			}
@@ -1088,13 +1085,15 @@ void VT240SetLineMode(VT240* vt, int mode)
 	}
 }
 
-/* VT240SoftReset: page 129 */
-void VT240Reset(VT240* vt)
+/* DECSTR: page 129 */
+void VT240SoftReset(VT240* vt)
 {
 	int i;
-	for(i = 0; i < vt->columns; i++) {
+	for(i = 0; i < TEXT_WIDTH_MAX; i++) {
 		vt->tabstops[i] = i % 8 == 7;
 	}
+
+	vt->state = 0;
 	vt->cursor_x_stored = 0;
 	vt->cursor_y_stored = 0;
 	vt->auto_wrap = 1;
@@ -1105,8 +1104,103 @@ void VT240Reset(VT240* vt)
 	vt->margin_bottom = vt->lines - 1;
 	vt->udk_locked = 0;
 	vt->keyboard_locked = 0;
+	vt->sgr = 0;
+
+	vt->mode |= DECTCEM;
+	vt->mode &= ~(IRM | DECOM | DECAWM | KAM | DECCKM);
+
+	vt->gl = 0;
+	vt->gl_lock = 0;
+	vt->gr = 2;
+	vt->gr_lock = 2;
+	vt->g[0] = CHARSET_ASCII;
+	vt->g[1] = CHARSET_DEC_SUPPLEMENTAL;
+	vt->g[2] = CHARSET_DEC_SUPPLEMENTAL;
+	vt->g[3] = CHARSET_DEC_SUPPLEMENTAL;
+
+	vt->sgr = 0;
+
 	VT240CursorHome(vt);
 	VT240EraseScreen(vt);
+	VT240SaveCursor(vt);
+}
+
+/* RIS */
+void VT240HardReset(VT240* vt)
+{
+	vt->columns = TEXT_WIDTH;
+	vt->mode = 0;
+
+	VT240SoftReset(vt);
+
+	vt->state = 0;
+	vt->mode = 0;
+	vt->ct_7bit = vt->config.mode != VT240_MODE_VT200_MODE_8BIT_CONTROLS;
+
+	if(vt->config.mode != VT240_MODE_VT52_MODE) {
+		vt->mode |= DECANM;
+	}
+
+	switch(vt->config.mode) {
+		case VT240_MODE_VT200_MODE_7BIT_CONTROLS:
+		case VT240_MODE_VT200_MODE_8BIT_CONTROLS:
+		case VT240_MODE_VT52_MODE:
+		case VT240_MODE_4010_4014_MODE:
+			vt->vt100_mode = 0;
+			break;
+		case VT240_MODE_VT100_MODE:
+			vt->vt100_mode = 1;
+			break;
+	}
+
+	if(vt->config.auto_wrap) {
+		vt->mode |= DECAWM;
+	}
+
+	if(vt->config.text_cursor == VT240_TEXT_CURSOR) {
+		vt->mode |= DECTCEM;
+	}
+
+	if(vt->config.new_line == VT240_NEW_LINE) {
+		vt->mode |= LNM;
+	}
+
+	if(vt->config.local_echo == VT240_NO_LOCAL_ECHO) {
+		vt->mode |= SRM;
+	}
+
+	if(vt->config.auto_repeat == VT240_AUTO_REPEAT) {
+		vt->mode |= DECARM;
+	}
+
+	vt->xoff = 0;
+	vt->xoff_point = 64;
+	vt->xon_point = 16;
+	vt->use_xoff = 1;
+	vt->sent_xoff = 0;
+
+	vt->margin_top = 0;
+	vt->margin_bottom = TEXT_HEIGHT - 1;
+
+	vt->gl = 0;
+	vt->gl_lock = 0;
+	vt->gr = 2;
+	vt->gr_lock = 2;
+	vt->g[0] = CHARSET_ASCII;
+	vt->g[1] = CHARSET_DEC_SUPPLEMENTAL;
+	vt->g[2] = CHARSET_DEC_SUPPLEMENTAL;
+	vt->g[3] = CHARSET_DEC_SUPPLEMENTAL;
+
+	VT240SaveCursor(vt);
+
+	/* TODO: implement properly */
+	memset(vt->answerback, 0, 31);
+
+	vt->fb_dirty = 0;
+
+	if(vt->resize) {
+		vt->resize(vt->columns, vt->lines);
+	}
 }
 
 void VT240Substitute(VT240* vt)
@@ -1225,11 +1319,29 @@ void VT240SendAnswerback(VT240* vt)
 
 void VT240SendPrimaryDA(VT240* vt)
 {
-	VT240SendText(vt, "\x9b?62;1;2;3;4;6;7;8;9c");
+	if(vt->vt100_mode) {
+		switch(vt->config.vt100_terminal_id) {
+			case VT240_VT100_TERMINAL_ID_VT240:
+				VT240SendText(vt, "\x9b?62;1;2;3;4;6;7;8;9c");
+				break;
+			case VT240_VT100_TERMINAL_ID_VT100:
+				VT240SendText(vt, "\x1b[?1;2c");
+				break;
+			case VT240_VT100_TERMINAL_ID_VT101:
+				VT240SendText(vt, "\x1b[?1;0c");
+			case VT240_VT100_TERMINAL_ID_VT102:
+				VT240SendText(vt, "\x1b[?6c");
+			case VT240_VT100_TERMINAL_ID_VT125:
+				VT240SendText(vt, "\x1b[?12;7;1;10;102c");
+		}
+	} else {
+		VT240SendText(vt, "\x9b?62;1;2;3;4;6;7;8;9c");
+	}
 }
 
 void VT240SendSecondaryDA(VT240* vt)
 {
+	/* version 2.2, integral modem */
 	VT240SendText(vt, "\x9b>2;22;1c");
 }
 
@@ -1295,7 +1407,9 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 					VT240NextLine(vt);
 					break;
 				case HTS:
-					VT240SetTabstop(vt);
+					if(vt->config.user_features == VT240_USER_FEATURES_UNLOCKED) {
+						VT240SetTabstop(vt);
+					}
 					break;
 				case RI:
 					VT240ReverseIndex(vt);
@@ -1351,37 +1465,55 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 					vt->g_dst = 1;
 					break;
 				case '*':
-					vt->state = STATE_G;
-					vt->g_dst = 2;
+					if(vt->vt100_mode) {
+						vt->state = STATE_TEXT;
+					} else {
+						vt->state = STATE_G;
+						vt->g_dst = 2;
+					}
 					break;
 				case '+':
-					vt->state = STATE_G;
-					vt->g_dst = 3;
+					if(vt->vt100_mode) {
+						vt->state = STATE_TEXT;
+					} else {
+						vt->state = STATE_G;
+						vt->g_dst = 3;
+					}
 					break;
 				case '~': /* LS1R */
 					vt->state = STATE_TEXT;
-					vt->gr      = 1;
-					vt->gr_lock = 1;
+					if(!vt->vt100_mode) {
+						vt->gr      = 1;
+						vt->gr_lock = 1;
+					}
 					break;
 				case 'n': /* LS2 */
 					vt->state = STATE_TEXT;
-					vt->gl      = 2;
-					vt->gl_lock = 2;
+					if(!vt->vt100_mode) {
+						vt->gl      = 2;
+						vt->gl_lock = 2;
+					}
 					break;
 				case '}': /* LS2R */
 					vt->state = STATE_TEXT;
-					vt->gr      = 2;
-					vt->gr_lock = 2;
+					if(!vt->vt100_mode) {
+						vt->gr      = 2;
+						vt->gr_lock = 2;
+					}
 					break;
 				case 'o': /* LS3 */
 					vt->state = STATE_TEXT;
-					vt->gl      = 3;
-					vt->gl_lock = 3;
+					if(!vt->vt100_mode) {
+						vt->gl      = 3;
+						vt->gl_lock = 3;
+					}
 					break;
 				case '|': /* LS3R */
 					vt->state = STATE_TEXT;
-					vt->gr      = 3;
-					vt->gr_lock = 3;
+					if(!vt->vt100_mode) {
+						vt->gr      = 3;
+						vt->gr_lock = 3;
+					}
 					break;
 				case ' ':
 					vt->state = STATE_ESC_SP;
@@ -1408,10 +1540,16 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 					break;
 				case 'H': /* HTS */
 					vt->state = STATE_TEXT;
-					VT240SetTabstop(vt);
+					if(vt->config.user_features == VT240_USER_FEATURES_UNLOCKED) {
+						VT240SetTabstop(vt);
+					}
 					break;
 				case '#':
 					vt->state = STATE_ESC_HASH;
+					break;
+				case 'c': /* RIS */
+					vt->state = STATE_TEXT;
+					VT240HardReset(vt);
 					break;
 				default:
 					vt->state = STATE_TEXT;
@@ -1508,7 +1646,7 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 					break;
 				case 'G': /* S8C1T */
 					vt->state = STATE_TEXT;
-					vt->ct_7bit = 0;
+					vt->ct_7bit = vt->vt100_mode;
 					break;
 			}
 			break;
@@ -1696,13 +1834,15 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 					break;
 				case 'g': /* TBC */
 					vt->state = STATE_TEXT;
-					switch(vt->parameters[0]) {
-						case 0:
-							VT240ClearTabstop(vt);
-							break;
-						case 3:
-							VT240ClearAllTabstops(vt);
-							break;
+					if(vt->config.user_features == VT240_USER_FEATURES_UNLOCKED) {
+						switch(vt->parameters[0]) {
+							case 0:
+								VT240ClearTabstop(vt);
+								break;
+							case 3:
+								VT240ClearAllTabstops(vt);
+								break;
+						}
 					}
 					break;
 				case 'm': /* SGR */
@@ -1756,7 +1896,9 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 					break;
 				case '@': /* ICH */
 					vt->state = STATE_TEXT;
-					VT240InsertCharacterN(vt, vt->parameters[0]);
+					if(!vt->vt100_mode) {
+						VT240InsertCharacterN(vt, vt->parameters[0]);
+					}
 					break;
 				case 'P': /* DCH */
 					vt->state = STATE_TEXT;
@@ -1764,7 +1906,9 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 					break;
 				case 'X': /* ECH */
 					vt->state = STATE_TEXT;
-					VT240EraseCharacter(vt, vt->parameters[0]);
+					if(!vt->vt100_mode) {
+						VT240EraseCharacter(vt, vt->parameters[0]);
+					}
 					break;
 				case 'K': /* EL */
 					vt->state = STATE_TEXT;
@@ -1780,6 +1924,9 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 					break;
 				case 'R': /* report cursor position result; ignore */
 					vt->state = STATE_TEXT;
+					break;
+				case '!':
+					vt->state = STATE_CSI_EXCL;
 					break;
 			}
 			break;
@@ -1980,6 +2127,8 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 								break;
 							case 38:
 								vt->mode &= ~DECTEK;
+								vt->vt100_mode = 0;
+								vt->ct_7bit = 1;
 								break;
 							case 42:
 								vt->mode &= ~DECNRCM;
@@ -2008,11 +2157,15 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 					break;
 				case 'J': /* DECSEL */
 					vt->state = STATE_TEXT;
-					VT240SelectiveEraseInLine(vt, vt->parameters[0]);
+					if(!vt->vt100_mode) {
+						VT240SelectiveEraseInLine(vt, vt->parameters[0]);
+					}
 					break;
 				case 'K': /* DECSED */
 					vt->state = STATE_TEXT;
-					VT240SelectiveEraseInDisplay(vt, vt->parameters[0]);
+					if(!vt->vt100_mode) {
+						VT240SelectiveEraseInDisplay(vt, vt->parameters[0]);
+					}
 					break;
 				case 'c':
 					/* ignore */
@@ -2022,7 +2175,7 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 					vt->state = STATE_TEXT;
 					switch(vt->parameters[0]) {
 						case 15:
-							VT240SendText(vt, "\x9b?13n");
+							VT240SendText(vt, "\x9b?13n"); /* no printer */
 							break;
 						case 25:
 							if(vt->udk_locked) {
@@ -2033,7 +2186,7 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 							break;
 						case 26:
 							VT240SendText(vt, "\x9b?27;");
-							VT240SendDecimal(vt, 0); /* TODO: return real keyboard layout */
+							VT240SendDecimal(vt, vt->config.keyboard + 1);
 							VT240Send(vt, 'n');
 							break;
 					}
@@ -2058,17 +2211,68 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 					vt->state = STATE_TEXT;
 					VT240Substitute(vt);
 					break;
-				case 'q':
+				case 'p':
 					switch(vt->parameters[0]) {
-						case 0:
-						case 2:
-							vt->sgr &= ~SCA_ON;
+						case 61: /* terminal level 1 */
+							vt->ct_7bit = 1;
+							vt->vt100_mode = 1;
 							break;
-						case 1:
-							vt->sgr |= SCA_ON;
+						case 62: /* terminal level 2 */
+							vt->vt100_mode = 0;
+							switch(vt->parameters[1]) {
+								case 0:
+								case 2:
+									vt->ct_7bit = 0;
+									break;
+								default:
+								case 1:
+									/* VT200, 7bit */
+									vt->ct_7bit = 1;
+									break;
+							}
 							break;
 					}
 					vt->state = STATE_TEXT;
+					break;
+				case 'q': /* DECSCA */
+					if(!vt->vt100_mode) {
+						switch(vt->parameters[0]) {
+							case 0:
+							case 2:
+								vt->sgr &= ~SCA_ON;
+								break;
+							case 1:
+								vt->sgr |= SCA_ON;
+								break;
+						}
+					}
+					vt->state = STATE_TEXT;
+					break;
+			}
+			break;
+		case STATE_CSI_EXCL:
+			switch(c) {
+				case ESC:
+					vt->state = STATE_ESC;
+					break;
+				case CSI:
+					vt->state = STATE_CSI;
+					vt->parameter_id = 0;
+					memset(vt->parameters, 0, MAX_PARAMETERS * sizeof(u16));
+					break;
+				default:
+				case CAN:
+					vt->state = STATE_TEXT;
+					break;
+				case SUB:
+					vt->state = STATE_TEXT;
+					VT240Substitute(vt);
+					break;
+				case 'p': /* DECSTR */
+					vt->state = STATE_TEXT;
+					if(!vt->vt100_mode) {
+						VT240SoftReset(vt);
+					}
 					break;
 			}
 			break;
@@ -2208,11 +2412,13 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 					break;
 				default:
 					if(c >= '?' && c <= '~') {
-						if(vt->cursor_x * CHAR_WIDTH + vt->sixel_x >= FRAMEBUFFER_WIDTH) {
+						unsigned int width = VT240GetCellWidth(vt);
+						unsigned int offset = VT240GetCellOffset(vt);
+						if(vt->cursor_x * width + offset + vt->sixel_x >= FRAMEBUFFER_WIDTH) {
 							return;
 						}
 						u8 bits = c - '?';
-						u32* sixel = &vt->framebuffer[(vt->cursor_y * CHAR_HEIGHT + vt->sixel_y) * FRAMEBUFFER_WIDTH + vt->cursor_x * CHAR_WIDTH + vt->sixel_x];
+						u32* sixel = &vt->framebuffer[(vt->cursor_y * CHAR_HEIGHT + vt->sixel_y) * FRAMEBUFFER_WIDTH + vt->cursor_x * width + offset + vt->sixel_x];
 						for(unsigned int i = 0; i < 6; i++) {
 							if(bits & 1) {
 								*sixel = 0xFFFFFFFF;
@@ -2304,7 +2510,9 @@ void VT240ProcessCharVT52(VT240* vt, unsigned char c)
 					VT240NextLine(vt);
 					break;
 				case HTS:
-					VT240SetTabstop(vt);
+					if(vt->config.user_features == VT240_USER_FEATURES_UNLOCKED) {
+						VT240SetTabstop(vt);
+					}
 					break;
 				case RI:
 					VT240ReverseIndex(vt);
@@ -2534,10 +2742,43 @@ void VT240ProcessCharVT52(VT240* vt, unsigned char c)
 
 void VT240ProcessChar(VT240* vt, unsigned char c)
 {
-	if(vt->mode & DECANM) {
-		VT240ProcessCharVT240(vt, c);
-	} else {
-		VT240ProcessCharVT52(vt, c);
+	/* strip MSB in VT52 mode */
+	if(!(vt->mode & DECANM)) {
+		c &= 0x7F;
+	}
+
+	switch(vt->config.controls) {
+		default:
+		case VT240_CONTROLS_INTERPRET_CONTROLS:
+			if(vt->mode & DECANM) {
+				VT240ProcessCharVT240(vt, c);
+			} else {
+				VT240ProcessCharVT52(vt, c);
+			}
+			break;
+		case VT240_CONTROLS_DISPLAY_CONTROLS:
+			switch(c) {
+				case LF:
+				case VT:
+				case FF:
+					VT240WriteGlyph(vt, c, true);
+					VT240Linefeed(vt);
+					break;
+				case CR:
+					VT240CarriageReturn(vt);
+					break;
+				case DC1:
+					VT240Xon(vt);
+					VT240WriteGlyph(vt, c, true);
+					break;
+				case DC3:
+					VT240Xoff(vt);
+					VT240WriteGlyph(vt, c, true);
+					break;
+				default:
+					VT240WriteGlyph(vt, c, true);
+					break;
+			}
 	}
 }
 
@@ -2604,7 +2845,7 @@ void VT240Process(VT240* vt, unsigned long dt)
 	}
 }
 
-void VT240ProcessKeyVT220(VT240* vt, u16 key)
+void VT240ProcessKeyVT240(VT240* vt, u16 key)
 {
 	switch(key) {
 		case CR:
@@ -2786,6 +3027,93 @@ void VT240ProcessKeyVT220(VT240* vt, u16 key)
 
 }
 
+void VT240ProcessKeyVT100(VT240* vt, u16 key)
+{
+	switch(key) {
+		case CR:
+			VT240SendInput(vt, key);
+			if(vt->mode & LNM) {
+				VT240SendInput(vt, LF);
+			}
+			break;
+		case VT240_KEY_UP:
+			if(vt->mode & DECCKM) {
+				VT240SendInput(vt, SS3);
+			} else {
+				VT240SendInput(vt, CSI);
+			}
+			VT240SendInput(vt, 'A');
+			break;
+		case VT240_KEY_DOWN:
+			if(vt->mode & DECCKM) {
+				VT240SendInput(vt, SS3);
+			} else {
+				VT240SendInput(vt, CSI);
+			}
+			VT240SendInput(vt, 'B');
+			break;
+		case VT240_KEY_RIGHT:
+			if(vt->mode & DECCKM) {
+				VT240SendInput(vt, SS3);
+			} else {
+				VT240SendInput(vt, CSI);
+			}
+			VT240SendInput(vt, 'C');
+			break;
+		case VT240_KEY_LEFT:
+			if(vt->mode & DECCKM) {
+				VT240SendInput(vt, SS3);
+			} else {
+				VT240SendInput(vt, CSI);
+			}
+			VT240SendInput(vt, 'D');
+			break;
+		case VT240_KEY_HOLD_SCREEN:
+		case VT240_KEY_PRINT_SCREEN:
+			break;
+		case VT240_KEY_SET_UP:
+			if(vt->in_setup) {
+				VT240LeaveSetup(vt);
+			} else {
+				VT240EnterSetup(vt);
+			}
+			break;
+		case VT240_KEY_DATA_TALK:
+		case VT240_KEY_BREAK:
+			/* local function keys */
+			/* TODO: implement */
+			break;
+		case VT240_KEY_F6:
+		case VT240_KEY_F7:
+		case VT240_KEY_F8:
+		case VT240_KEY_F9:
+		case VT240_KEY_F10:
+			break;
+		case VT240_KEY_F11:
+			VT240SendInput(vt, ESC);
+			break;
+		case VT240_KEY_F12:
+			VT240SendInput(vt, BS);
+			break;
+		case VT240_KEY_F13:
+			VT240SendInput(vt, LF);
+			break;
+		case VT240_KEY_F14:
+		case VT240_KEY_F15:
+		case VT240_KEY_F16:
+		case VT240_KEY_F17:
+		case VT240_KEY_F18:
+		case VT240_KEY_F19:
+		case VT240_KEY_F20:
+			break;
+		default:
+			if(key < 0x80) {
+				VT240SendInput(vt, key);
+			}
+	}
+
+}
+
 void VT240ProcessKeyVT52(VT240* vt, u16 key)
 {
 	switch(key) {
@@ -2857,14 +3185,20 @@ void VT240ProcessKeyVT52(VT240* vt, u16 key)
 		case VT240_KEY_F20:
 			break;
 		default:
-			VT240SendInput(vt, key);
+			if(key < 0x80) {
+				VT240SendInput(vt, key);
+			}
 	}
 }
 
 void VT240ProcessKey(VT240* vt, u16 key)
 {
 	if(vt->mode & DECANM) {
-		VT240ProcessKeyVT220(vt, key);
+		if(vt->vt100_mode) {
+			VT240ProcessKeyVT100(vt, key);
+		} else {
+			VT240ProcessKeyVT240(vt, key);
+		}
 	} else {
 		VT240ProcessKeyVT52(vt, key);
 	}

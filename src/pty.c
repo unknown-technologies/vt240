@@ -301,3 +301,20 @@ void PTYPoll(PTY* pty)
 		}
 	}
 }
+
+void PTYResize(PTY* pty, unsigned int width, unsigned int height)
+{
+	struct winsize ws = {
+		.ws_col = width,
+		.ws_row = height
+	};
+
+	if(ioctl(pty->master, TIOCSWINSZ, &ws) == -1) {
+		printf("[PTY] failed to set console window size: %s\n", strerror(errno));
+		return;
+	}
+
+	if(kill(pty->pid, SIGWINCH) == -1) {
+		printf("[PTY] failed to send SIGWINCH: %s\n", strerror(errno));
+	}
+}

@@ -140,12 +140,59 @@ void kb_up_func(unsigned char key, int x, int y)
 	}
 }
 
-void special_func(int key, int x, int y)
+static u16 get_special_key(int key)
 {
 	switch(key) {
 		case GLUT_KEY_F1:
-			VT240KeyDown(&vt, VT240_KEY_HOLD_SCREEN);
-			break;
+			return VT240_KEY_HOLD_SCREEN;
+		case GLUT_KEY_F2:
+			return VT240_KEY_PRINT_SCREEN;
+		case GLUT_KEY_F3:
+			return VT240_KEY_SET_UP;
+		case GLUT_KEY_F4:
+			return VT240_KEY_SET_UP;
+		case GLUT_KEY_F5:
+			return VT240_KEY_BREAK;
+		case GLUT_KEY_F6:
+			return VT240_KEY_F6;
+		case GLUT_KEY_F7:
+			return VT240_KEY_F7;
+		case GLUT_KEY_F8:
+			return VT240_KEY_F8;
+		case GLUT_KEY_F9:
+			return VT240_KEY_F9;
+		case GLUT_KEY_F10:
+			return VT240_KEY_F10;
+		case GLUT_KEY_F11:
+			return VT240_KEY_F11;
+		case GLUT_KEY_F12:
+			return VT240_KEY_F12;
+		case GLUT_KEY_LEFT:
+			return VT240_KEY_LEFT;
+		case GLUT_KEY_UP:
+			return VT240_KEY_UP;
+		case GLUT_KEY_RIGHT:
+			return VT240_KEY_RIGHT;
+		case GLUT_KEY_DOWN:
+			return VT240_KEY_DOWN;
+		case GLUT_KEY_PAGE_UP:
+			return VT240_KEY_PREV_SCREEN;
+		case GLUT_KEY_PAGE_DOWN:
+			return VT240_KEY_NEXT_SCREEN;
+		case GLUT_KEY_HOME:
+			return VT240_KEY_FIND;
+		case GLUT_KEY_END:
+			return VT240_KEY_SELECT;
+		case GLUT_KEY_INSERT:
+			return VT240_KEY_INSERT;
+		default:
+			return 0xFFFF;
+	}
+}
+
+void special_func(int key, int x, int y)
+{
+	switch(key) {
 		case GLUT_KEY_F2:
 			// VT240KeyDown(&vt, VT240_KEY_PRINT_SCREEN);
 			if(is_fullscreen) {
@@ -155,12 +202,6 @@ void special_func(int key, int x, int y)
 			}
 			is_fullscreen = !is_fullscreen;
 			break;
-		case GLUT_KEY_F3:
-			VT240KeyDown(&vt, VT240_KEY_SET_UP);
-			break;
-		case GLUT_KEY_F4:
-			VT240KeyDown(&vt, VT240_KEY_DATA_TALK);
-			break;
 		case GLUT_KEY_F5:
 			// VT240KeyDown(&vt, VT240_KEY_BREAK);
 			if(use_telnet) {
@@ -168,53 +209,11 @@ void special_func(int key, int x, int y)
 			}
 			exit(0);
 			break;
-		case GLUT_KEY_F6:
-			VT240KeyDown(&vt, VT240_KEY_F6);
-			break;
-		case GLUT_KEY_F7:
-			VT240KeyDown(&vt, VT240_KEY_F7);
-			break;
-		case GLUT_KEY_F8:
-			VT240KeyDown(&vt, VT240_KEY_F8);
-			break;
-		case GLUT_KEY_F9:
-			VT240KeyDown(&vt, VT240_KEY_F9);
-			break;
-		case GLUT_KEY_F10:
-			VT240KeyDown(&vt, VT240_KEY_F10);
-			break;
-		case GLUT_KEY_F11:
-			VT240KeyDown(&vt, VT240_KEY_F11);
-			break;
-		case GLUT_KEY_F12:
-			VT240KeyDown(&vt, VT240_KEY_F12);
-			break;
-		case GLUT_KEY_LEFT:
-			VT240KeyDown(&vt, VT240_KEY_LEFT);
-			break;
-		case GLUT_KEY_UP:
-			VT240KeyDown(&vt, VT240_KEY_UP);
-			break;
-		case GLUT_KEY_RIGHT:
-			VT240KeyDown(&vt, VT240_KEY_RIGHT);
-			break;
-		case GLUT_KEY_DOWN:
-			VT240KeyDown(&vt, VT240_KEY_DOWN);
-			break;
-		case GLUT_KEY_PAGE_UP:
-			VT240KeyDown(&vt, VT240_KEY_PREV_SCREEN);
-			break;
-		case GLUT_KEY_PAGE_DOWN:
-			VT240KeyDown(&vt, VT240_KEY_NEXT_SCREEN);
-			break;
-		case GLUT_KEY_HOME:
-			VT240KeyDown(&vt, VT240_KEY_FIND);
-			break;
-		case GLUT_KEY_END:
-			VT240KeyDown(&vt, VT240_KEY_SELECT);
-			break;
-		case GLUT_KEY_INSERT:
-			VT240KeyDown(&vt, VT240_KEY_INSERT);
+		default:
+			u16 code = get_special_key(key);
+			if(code != 0xFFFF) {
+				VT240KeyDown(&vt, code);
+			}
 			break;
 	}
 }
@@ -222,68 +221,17 @@ void special_func(int key, int x, int y)
 void special_up_func(int key, int x, int y)
 {
 	switch(key) {
-		case GLUT_KEY_F1:
-			VT240KeyUp(&vt, VT240_KEY_HOLD_SCREEN);
-			break;
 		case GLUT_KEY_F2:
 			// VT240KeyUp(&vt, VT240_KEY_PRINT_SCREEN);
-			break;
-		case GLUT_KEY_F3:
-			VT240KeyUp(&vt, VT240_KEY_SET_UP);
-			break;
-		case GLUT_KEY_F4:
-			VT240KeyUp(&vt, VT240_KEY_SET_UP);
 			break;
 		case GLUT_KEY_F5:
 			// VT240KeyUp(&vt, VT240_KEY_BREAK);
 			break;
-		case GLUT_KEY_F6:
-			VT240KeyUp(&vt, VT240_KEY_F6);
-			break;
-		case GLUT_KEY_F7:
-			VT240KeyUp(&vt, VT240_KEY_F7);
-			break;
-		case GLUT_KEY_F8:
-			VT240KeyUp(&vt, VT240_KEY_F8);
-			break;
-		case GLUT_KEY_F9:
-			VT240KeyUp(&vt, VT240_KEY_F9);
-			break;
-		case GLUT_KEY_F10:
-			VT240KeyUp(&vt, VT240_KEY_F10);
-			break;
-		case GLUT_KEY_F11:
-			VT240KeyUp(&vt, VT240_KEY_F11);
-			break;
-		case GLUT_KEY_F12:
-			VT240KeyUp(&vt, VT240_KEY_F12);
-			break;
-		case GLUT_KEY_LEFT:
-			VT240KeyUp(&vt, VT240_KEY_LEFT);
-			break;
-		case GLUT_KEY_UP:
-			VT240KeyUp(&vt, VT240_KEY_UP);
-			break;
-		case GLUT_KEY_RIGHT:
-			VT240KeyUp(&vt, VT240_KEY_RIGHT);
-			break;
-		case GLUT_KEY_DOWN:
-			VT240KeyUp(&vt, VT240_KEY_DOWN);
-			break;
-		case GLUT_KEY_PAGE_UP:
-			VT240KeyUp(&vt, VT240_KEY_PREV_SCREEN);
-			break;
-		case GLUT_KEY_PAGE_DOWN:
-			VT240KeyUp(&vt, VT240_KEY_NEXT_SCREEN);
-			break;
-		case GLUT_KEY_HOME:
-			VT240KeyUp(&vt, VT240_KEY_FIND);
-			break;
-		case GLUT_KEY_END:
-			VT240KeyUp(&vt, VT240_KEY_SELECT);
-			break;
-		case GLUT_KEY_INSERT:
-			VT240KeyUp(&vt, VT240_KEY_INSERT);
+		default:
+			u16 code = get_special_key(key);
+			if(code != 0xFFFF) {
+				VT240KeyUp(&vt, code);
+			}
 			break;
 	}
 }
@@ -297,6 +245,8 @@ void print_ch(unsigned char c)
 
 	putc(c, stdout);
 	fflush(stdout);
+
+	VT240Receive(&vt, c);
 }
 
 void display_func(void)
@@ -310,7 +260,7 @@ void display_func(void)
 	glutSwapBuffers();
 }
 
-static void telnet_rx(unsigned char c)
+static void vt_rx(unsigned char c)
 {
 	VT240Receive(&vt, c);
 }
@@ -320,14 +270,14 @@ static void telnet_tx(unsigned char c)
 	TELNETSend(&telnet, c);
 }
 
-static void pty_rx(unsigned char c)
-{
-	VT240Receive(&vt, c);
-}
-
 static void pty_tx(unsigned char c)
 {
 	PTYSend(&pty, c);
+}
+
+static void pty_resize(unsigned int width, unsigned int height)
+{
+	PTYResize(&pty, width, height);
 }
 
 static void print_usage(const char* self)
@@ -470,9 +420,8 @@ int main(int argc, char** argv, char** envp)
 
 	glutIgnoreKeyRepeat(1);
 
-	VT240Init(&vt, 80, 24);
+	VT240Init(&vt);
 	vt.rx = print_ch;
-	vt.mode &= ~SRM;
 
 	VTInitRenderer(&renderer, &vt);
 	VTEnableGlow(&renderer, enable_glow);
@@ -495,7 +444,7 @@ int main(int argc, char** argv, char** envp)
 		VT240ReceiveText(&vt, buf);
 
 		TELNETInit(&telnet);
-		telnet.rx = telnet_rx;
+		telnet.rx = vt_rx;
 		vt.rx = telnet_tx;
 
 		TELNETConnect(&telnet, argv[0], atoi(argv[1]));
@@ -507,8 +456,9 @@ int main(int argc, char** argv, char** envp)
 		PTYInit(&pty);
 		PTYOpen(&pty, shell, envp);
 
-		pty.rx = pty_rx;
+		pty.rx = vt_rx;
 		vt.rx = pty_tx;
+		vt.resize = pty_resize;
 	}
 
 	// glutSetCursor(GLUT_CURSOR_NONE);

@@ -14,6 +14,7 @@ void	PTYInit(PTY* pty);
 void	PTYOpen(PTY* pty, char** argv, char** envp);
 void	PTYSend(PTY* pty, unsigned char c);
 void	PTYPoll(PTY* pty);
+void	PTYResize(PTY* pty, unsigned int width, unsigned int height);
 
 void	PTYRxString(PTY* pty, const char* s);
 void	PTYRxError(PTY* pty, const char* what, const char* msg);
