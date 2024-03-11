@@ -8,8 +8,7 @@
 #include <string.h>
 #include <GL/gl.h>
 #include <GL/glext.h>
-#include <GL/glut.h>
-#include <GL/freeglut_ext.h>
+#include <GLFW/glfw3.h>
 
 #include <math.h>
 
@@ -17,6 +16,7 @@
 #include <errno.h>
 #include <pwd.h>
 #include <sys/types.h>
+#include <sys/time.h>
 
 #include "types.h"
 #include "vt.h"
@@ -34,6 +34,11 @@ static bool is_fullscreen = false;
 
 static int screen_width;
 static int screen_height;
+
+static int window_pos_x;
+static int window_pos_y;
+
+static GLFWwindow* window;
 
 static VT240 vt;
 static VTRenderer renderer;
@@ -96,9 +101,16 @@ void check_error(const char* filename, unsigned int line)
 }
 #endif
 
+static unsigned long get_time(void)
+{
+	struct timeval t;
+	gettimeofday(&t, NULL);
+	return t.tv_sec * 1000 + t.tv_usec / 1000;
+}
+
 void process(void)
 {
-	unsigned long now = glutGet(GLUT_ELAPSED_TIME);
+	unsigned long now = get_time();
 
 	unsigned long dt = now - time;
 
@@ -116,124 +128,183 @@ void process(void)
 	time = now;
 }
 
-void reshape_func(int width, int height)
+static int get_monitor(GLFWmonitor** monitor, GLFWwindow* window)
 {
-	screen_width = width;
-	screen_height = height;
-}
+	int window_x;
+	int window_y;
 
-void kb_func(unsigned char key, int x, int y)
-{
-	if(key == 0x7F) {
-		VT240KeyDown(&vt, VT240_KEY_REMOVE);
-	} else {
-		VT240KeyDown(&vt, key);
-	}
-}
+	glfwGetWindowPos(window, &window_x, &window_y);
 
-void kb_up_func(unsigned char key, int x, int y)
-{
-	if(key == 0x7F) {
-		VT240KeyUp(&vt, VT240_KEY_REMOVE);
-	} else {
-		VT240KeyUp(&vt, key);
-	}
-}
+	int window_w;
+	int window_h;
 
-static u16 get_special_key(int key)
-{
-	switch(key) {
-		case GLUT_KEY_F1:
-			return VT240_KEY_HOLD_SCREEN;
-		case GLUT_KEY_F2:
-			return VT240_KEY_PRINT_SCREEN;
-		case GLUT_KEY_F3:
-			return VT240_KEY_SET_UP;
-		case GLUT_KEY_F4:
-			return VT240_KEY_SET_UP;
-		case GLUT_KEY_F5:
-			return VT240_KEY_BREAK;
-		case GLUT_KEY_F6:
-			return VT240_KEY_F6;
-		case GLUT_KEY_F7:
-			return VT240_KEY_F7;
-		case GLUT_KEY_F8:
-			return VT240_KEY_F8;
-		case GLUT_KEY_F9:
-			return VT240_KEY_F9;
-		case GLUT_KEY_F10:
-			return VT240_KEY_F10;
-		case GLUT_KEY_F11:
-			return VT240_KEY_F11;
-		case GLUT_KEY_F12:
-			return VT240_KEY_F12;
-		case GLUT_KEY_LEFT:
-			return VT240_KEY_LEFT;
-		case GLUT_KEY_UP:
-			return VT240_KEY_UP;
-		case GLUT_KEY_RIGHT:
-			return VT240_KEY_RIGHT;
-		case GLUT_KEY_DOWN:
-			return VT240_KEY_DOWN;
-		case GLUT_KEY_PAGE_UP:
-			return VT240_KEY_PREV_SCREEN;
-		case GLUT_KEY_PAGE_DOWN:
-			return VT240_KEY_NEXT_SCREEN;
-		case GLUT_KEY_HOME:
-			return VT240_KEY_FIND;
-		case GLUT_KEY_END:
-			return VT240_KEY_SELECT;
-		case GLUT_KEY_INSERT:
-			return VT240_KEY_INSERT;
-		default:
-			return 0xFFFF;
-	}
-}
+	glfwGetWindowSize(window, &window_w, &window_h);
 
-void special_func(int key, int x, int y)
-{
-	switch(key) {
-		case GLUT_KEY_F2:
-			// VT240KeyDown(&vt, VT240_KEY_PRINT_SCREEN);
-			if(is_fullscreen) {
-				glutReshapeWindow(SCREEN_WIDTH, SCREEN_HEIGHT);
+	int monitor_count;
+	GLFWmonitor** monitors = glfwGetMonitors(&monitor_count);
+
+	int window_x1 = window_x + window_w;
+	int window_y1 = window_y + window_h;
+
+	int max_overlap = 0;
+	GLFWmonitor* closest = NULL;
+
+	for(int i = 0; i < monitor_count; i++) {
+		GLFWmonitor* mon = monitors[i];
+
+		int pos_x;
+		int pos_y;
+
+		glfwGetMonitorPos(mon, &pos_x, &pos_y);
+
+		const GLFWvidmode* mode = glfwGetVideoMode(mon);
+
+		int pos_x1 = pos_x + mode->width;
+		int pos_y1 = pos_y + mode->height;
+
+		/* overlap? */
+		if(!(
+			(window_x1 < pos_x) ||
+			(window_x > pos_x1) ||
+			(window_y < pos_y) ||
+			(window_y > pos_y1)
+		)) {
+			int overlap_w = 0;
+			int overlap_h = 0;
+
+			/* x, width */
+			if(window_x < pos_x) {
+				if(window_x1 < pos_x1) {
+					overlap_w = window_x1 - pos_x;
+				} else {
+					overlap_w = mode->width;
+				}
 			} else {
-				glutFullScreen();
+				if(pos_x1 < window_x1) {
+					overlap_w = pos_x1 - window_x;
+				} else {
+					overlap_w = window_w;
+				}
 			}
-			is_fullscreen = !is_fullscreen;
-			break;
-		case GLUT_KEY_F5:
-			// VT240KeyDown(&vt, VT240_KEY_BREAK);
-			if(use_telnet) {
-				TELNETDisconnect(&telnet);
+
+			// y, height
+			if(window_y < pos_y) {
+				if(window_y1 < pos_y1) {
+					overlap_h = window_y1 - pos_y;
+				} else {
+					overlap_h = mode->height;
+				}
+			} else {
+				if(pos_y1 < window_y1) {
+					overlap_h = pos_y1 - window_y;
+				} else {
+					overlap_h = window_h;
+				}
 			}
-			exit(0);
-			break;
-		default:
-			u16 code = get_special_key(key);
-			if(code != 0xFFFF) {
-				VT240KeyDown(&vt, code);
+
+			int overlap = overlap_w * overlap_h;
+			if (overlap > max_overlap) {
+				closest = monitors[i];
+				max_overlap = overlap;
 			}
-			break;
+		}
+	}
+
+	if(closest) {
+		*monitor = closest;
+		return 1;
+	} else {
+		return 0;
 	}
 }
 
-void special_up_func(int key, int x, int y)
+static void enter_fullscreen(void)
 {
-	switch(key) {
-		case GLUT_KEY_F2:
-			// VT240KeyUp(&vt, VT240_KEY_PRINT_SCREEN);
-			break;
-		case GLUT_KEY_F5:
-			// VT240KeyUp(&vt, VT240_KEY_BREAK);
-			break;
-		default:
-			u16 code = get_special_key(key);
-			if(code != 0xFFFF) {
-				VT240KeyUp(&vt, code);
-			}
-			break;
+	glfwGetWindowPos(window, &window_pos_x, &window_pos_y);
+
+	GLFWmonitor* mon;
+	if(get_monitor(&mon, window)) {
+		int pos_x;
+		int pos_y;
+
+		glfwGetMonitorPos(mon, &pos_x, &pos_y);
+		const GLFWvidmode* mode = glfwGetVideoMode(mon);
+
+		glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+		glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_TRUE);
+
+		glfwSetWindowPos(window, pos_x, pos_y);
+		glfwSetWindowSize(window, mode->width, mode->height);
+
+		is_fullscreen = true;
 	}
+}
+
+static void exit_fullscreen(void)
+{
+	glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
+	glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_FALSE);
+
+	glfwSetWindowSize(window, SCREEN_WIDTH, SCREEN_HEIGHT);
+	glfwSetWindowPos(window, window_pos_x, window_pos_y);
+
+	is_fullscreen = false;
+}
+
+static void toggle_fullscreen(void)
+{
+	if(is_fullscreen) {
+		exit_fullscreen();
+	} else {
+		enter_fullscreen();
+	}
+}
+
+void key_handler(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if(action == GLFW_PRESS) {
+		switch(key) {
+			case GLFW_KEY_F2:
+				if(mods & (GLFW_MOD_CONTROL | GLFW_MOD_ALT)) {
+					VT240KeyboardKeyDown(&vt, key);
+				} else {
+					toggle_fullscreen();
+				}
+				break;
+			case GLFW_KEY_F5:
+				if(mods & (GLFW_MOD_CONTROL | GLFW_MOD_ALT)) {
+					VT240KeyboardKeyDown(&vt, key);
+				} else {
+					glfwSetWindowShouldClose(window, GLFW_TRUE);
+				}
+				break;
+			default:
+				VT240KeyboardKeyDown(&vt, key);
+				break;
+		}
+	} else if(action == GLFW_RELEASE) {
+		switch(key) {
+			case GLFW_KEY_F2:
+			case GLFW_KEY_F5:
+				if(mods & (GLFW_MOD_CONTROL | GLFW_MOD_ALT)) {
+					VT240KeyboardKeyUp(&vt, key);
+				}
+				break;
+			default:
+				VT240KeyboardKeyUp(&vt, key);
+				break;
+		}
+	}
+}
+
+void char_handler(GLFWwindow* window, unsigned int code)
+{
+	VT240KeyboardChar(&vt, code);
+}
+
+static void error_handler(int error, const char* description)
+{
+	printf("Error 0x%X: %s\n", error, description);
 }
 
 void print_ch(unsigned char c)
@@ -256,8 +327,6 @@ void display_func(void)
 
 	VTRender(&renderer, screen_width, screen_height);
 	GL_ERROR();
-
-	glutSwapBuffers();
 }
 
 static void vt_rx(unsigned char c)
@@ -282,7 +351,7 @@ static void pty_resize(unsigned int width, unsigned int height)
 
 static void print_usage(const char* self)
 {
-	printf("Usage: %s [-f modestring] [-g] [-s command | hostname port]\n", self);
+	printf("Usage: %s [-g] [-l | -s command | -t hostname port]\n", self);
 }
 
 char** get_default_argv(void)
@@ -319,24 +388,16 @@ char** get_default_argv(void)
 int main(int argc, char** argv, char** envp)
 {
 	const char* self = *argv;
-	char* modestring = NULL;
-	bool use_game_mode = false;
 	char** shell = NULL;
 	const char* hostname = NULL;
 	int port;
+	bool loopback = false;
 
 	argc--;
 	argv++;
 	for(int i = 0; i < argc; i++) {
 		char* arg = argv[i];
-		if(!strcmp(arg, "-f")) {
-			if(i + 1 >= argc) {
-				print_usage(self);
-				return 1;
-			}
-			modestring = argv[i + 1];
-			i++;
-		} else if(!strcmp(arg, "-g")) {
+		if(!strcmp(arg, "-g")) {
 			enable_glow = false;
 		} else if(!strcmp(arg, "-s")) {
 			if(i + 1 >= argc) {
@@ -344,7 +405,21 @@ int main(int argc, char** argv, char** envp)
 				shell = get_default_argv();
 			} else {
 				shell = &argv[i + 1];
+				i = argc;
 			}
+			break;
+		} else if(!strcmp(arg, "-t")) {
+			if(i + 2 >= argc) {
+				print_usage(self);
+				return 1;
+			} else {
+				hostname = argv[i + 1];
+				port = atoi(argv[i + 2]);
+				i += 2;
+			}
+			break;
+		} else if(!strcmp(arg, "-l")) {
+			loopback = true;
 			break;
 		} else if(!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
 			print_usage(self);
@@ -360,27 +435,34 @@ int main(int argc, char** argv, char** envp)
 		}
 	}
 
-	glutInit(&argc, argv);
-	// glutInitContextVersion(4, 6);
-	// glutInitContextProfile(GLUT_CORE_PROFILE);
-	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
-
-	if(modestring) {
-		glutGameModeString(modestring);
-		int possible = glutGameModeGet(GLUT_GAME_MODE_POSSIBLE);
-		if(possible) {
-			glutEnterGameMode();
-			use_game_mode = true;
-		} else {
-			printf("Cannot use mode string \"%s\"\n", modestring);
-		}
+	if(!loopback && !hostname && !shell) {
+		// no args => default shell
+		shell = get_default_argv();
 	}
 
-	if(!use_game_mode) {
-		glutInitWindowSize(SCREEN_WIDTH, SCREEN_HEIGHT);
-		// glutInitWindowPosition(100, 100);
-		glutCreateWindow("VT240");
+	glfwSetErrorCallback(error_handler);
+	if(!glfwInit()) {
+		printf("Failed to initialize GLFW\n");
+		return 1;
 	}
+
+	// glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	// glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+
+	glfwWindowHint(GLFW_AUTO_ICONIFY, 0);
+
+	window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "VT240", NULL, NULL);
+	if(!window) {
+		printf("Failed to create GLFW window\n");
+		glfwTerminate();
+		return 1;
+	}
+
+	glfwSetKeyCallback(window, key_handler);
+	glfwSetCharCallback(window, char_handler);
+
+	glfwMakeContextCurrent(window);
+	glfwSwapInterval(1);
 
 	const unsigned char* gl_vendor = glGetString(GL_VENDOR);
 	const unsigned char* gl_renderer = glGetString(GL_RENDERER);
@@ -391,8 +473,6 @@ int main(int argc, char** argv, char** envp)
 	printf("GL Renderer:  %s\n", gl_renderer);
 	printf("GL Version:   %s\n", gl_version);
 	printf("GLSL Version: %s\n", gl_glsl_version);
-
-	printf("using depth buffer with %d bit\n", glutGet(GLUT_WINDOW_DEPTH_SIZE));
 
 #ifdef _WIN32
 	load_gl_extensions();
@@ -408,17 +488,6 @@ int main(int argc, char** argv, char** envp)
 	}
 
 	GL_ERROR();
-
-	glutReshapeFunc(reshape_func);
-	glutDisplayFunc(display_func);
-	glutIdleFunc(display_func);
-
-	glutKeyboardFunc(kb_func);
-	glutKeyboardUpFunc(kb_up_func);
-	glutSpecialFunc(special_func);
-	glutSpecialUpFunc(special_up_func);
-
-	glutIgnoreKeyRepeat(1);
 
 	VT240Init(&vt);
 	vt.rx = print_ch;
@@ -447,7 +516,7 @@ int main(int argc, char** argv, char** envp)
 		telnet.rx = vt_rx;
 		vt.rx = telnet_tx;
 
-		TELNETConnect(&telnet, argv[0], atoi(argv[1]));
+		TELNETConnect(&telnet, hostname, port);
 	} else if(shell) {
 		use_pty = true;
 
@@ -461,10 +530,29 @@ int main(int argc, char** argv, char** envp)
 		vt.resize = pty_resize;
 	}
 
-	// glutSetCursor(GLUT_CURSOR_NONE);
+	time = get_time();
 
-	time = glutGet(GLUT_ELAPSED_TIME);
-	glutMainLoop();
+	while(!glfwWindowShouldClose(window)) {
+		glfwGetFramebufferSize(window, &screen_width, &screen_height);
+
+		glViewport(0, 0, screen_width, screen_height);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		display_func();
+
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
+
+	/* VERY IMPORTANT!
+	 * If this extra handling is missing, KDE5 / Plasma will shit itself on
+	 * certain NVIDIA cards when using real fullscreen mode! */
+	if(is_fullscreen) {
+		exit_fullscreen();
+	}
+
+	glfwDestroyWindow(window);
+	glfwTerminate();
 
 	return 0;
 }

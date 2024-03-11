@@ -26,18 +26,61 @@
 #define	VT240_KEY_F18				318
 #define	VT240_KEY_F19				319
 #define	VT240_KEY_F20				320
+#define	VT240_KEY_F6_UDK			321
+#define	VT240_KEY_F7_UDK			322
+#define	VT240_KEY_F8_UDK			323
+#define	VT240_KEY_F9_UDK			324
+#define	VT240_KEY_F10_UDK			325
+#define	VT240_KEY_F11_UDK			326
+#define	VT240_KEY_F12_UDK			327
+#define	VT240_KEY_F13_UDK			328
+#define	VT240_KEY_F14_UDK			329
+#define	VT240_KEY_F15_UDK			330
+#define	VT240_KEY_F16_UDK			331
+#define	VT240_KEY_F17_UDK			332
+#define	VT240_KEY_F18_UDK			333
+#define	VT240_KEY_F19_UDK			334
+#define	VT240_KEY_F20_UDK			335
 
-#define	VT240_KEY_FIND				330
-#define	VT240_KEY_INSERT			331
-#define	VT240_KEY_REMOVE			332
-#define	VT240_KEY_SELECT			333
-#define	VT240_KEY_PREV_SCREEN			334
-#define	VT240_KEY_NEXT_SCREEN			335
-#define	VT240_KEY_UP				336
-#define	VT240_KEY_DOWN				337
-#define	VT240_KEY_LEFT				338
-#define	VT240_KEY_RIGHT				339
+#define	VT240_KEY_KP_0				336
+#define	VT240_KEY_KP_1				337
+#define	VT240_KEY_KP_2				338
+#define	VT240_KEY_KP_3				339
+#define	VT240_KEY_KP_4				340
+#define	VT240_KEY_KP_5				341
+#define	VT240_KEY_KP_6				342
+#define	VT240_KEY_KP_7				343
+#define	VT240_KEY_KP_8				344
+#define	VT240_KEY_KP_9				345
+#define	VT240_KEY_KP_MINUS			346
+#define	VT240_KEY_KP_COMMA			347
+#define	VT240_KEY_KP_PERIOD			348
+#define	VT240_KEY_KP_ENTER			349
+#define	VT240_KEY_KP_PF1			350
+#define	VT240_KEY_KP_PF2			351
+#define	VT240_KEY_KP_PF3			352
+#define	VT240_KEY_KP_PF4			353
 
+#define	VT240_KEY_FIND				354
+#define	VT240_KEY_INSERT			355
+#define	VT240_KEY_REMOVE			356
+#define	VT240_KEY_SELECT			357
+#define	VT240_KEY_PREV_SCREEN			358
+#define	VT240_KEY_NEXT_SCREEN			359
+#define	VT240_KEY_UP				360
+#define	VT240_KEY_DOWN				361
+#define	VT240_KEY_LEFT				362
+#define	VT240_KEY_RIGHT				363
+
+#define	VT240_KEY_CTRL				364
+#define	VT240_KEY_SHIFT				365
+
+#define	VT240_MODIFIER_SHIFT_L			_BV(0)
+#define	VT240_MODIFIER_SHIFT_R			_BV(1)
+#define	VT240_MODIFIER_CTRL_L			_BV(2)
+#define	VT240_MODIFIER_CTRL_R			_BV(3)
+#define	VT240_MODIFIER_ALT_L			_BV(4)
+#define	VT240_MODIFIER_ALT_R			_BV(5)
 
 #define	MAX_PARAMETERS				16
 
@@ -45,21 +88,23 @@
 #define	VT240_LANGUAGE_FRANCAIS			1
 #define	VT240_LANGUAGE_DEUTSCH			2
 
-#define	VT240_KEYBOARD_NORTH_AMERICAN		0
-#define	VT240_KEYBOARD_BRITISH			1
-#define	VT240_KEYBOARD_FLEMISH			2
-#define	VT240_KEYBOARD_CANADIAN_FRENCH		3
-#define	VT240_KEYBOARD_DANISH			4
-#define	VT240_KEYBOARD_FINNISH			5
-#define	VT240_KEYBOARD_GERMAN			6
-#define	VT240_KEYBOARD_DUTCH			7
-#define	VT240_KEYBOARD_ITALIAN			8
-#define	VT240_KEYBOARD_SWISS_FRENCH		9
-#define	VT240_KEYBOARD_SWISS_GERMAN		10
-#define	VT240_KEYBOARD_SWEDISH			11
-#define	VT240_KEYBOARD_NORWEGIAN		12
-#define	VT240_KEYBOARD_FRENCH			13
-#define	VT240_KEYBOARD_SPANISH			14
+#define	VT240_KEYBOARD_UNKNOWN			0
+#define	VT240_KEYBOARD_NORTH_AMERICAN		1
+#define	VT240_KEYBOARD_BRITISH			2
+#define	VT240_KEYBOARD_FLEMISH			3
+#define	VT240_KEYBOARD_CANADIAN_FRENCH		4
+#define	VT240_KEYBOARD_DANISH			5
+#define	VT240_KEYBOARD_FINNISH			6
+#define	VT240_KEYBOARD_GERMAN			7
+#define	VT240_KEYBOARD_DUTCH			8
+#define	VT240_KEYBOARD_ITALIAN			9
+#define	VT240_KEYBOARD_SWISS_FRENCH		10
+#define	VT240_KEYBOARD_SWISS_GERMAN		11
+#define	VT240_KEYBOARD_SWEDISH			12
+#define	VT240_KEYBOARD_NORWEGIAN		13
+#define	VT240_KEYBOARD_FRENCH			14
+#define	VT240_KEYBOARD_SPANISH			15
+#define	VT240_KEYBOARD_COUNT			16
 
 #define	VT240_CONTROLS_INTERPRET_CONTROLS	0
 #define	VT240_CONTROLS_DISPLAY_CONTROLS		1
@@ -153,7 +198,6 @@ typedef struct {
 	char		cursor_style;
 	char		mode;
 	char		vt100_terminal_id;
-	char		user_defined_keys;
 	char		user_features;
 	char		character_set_mode;
 	char		keypad;
@@ -200,16 +244,11 @@ typedef struct {
 	int		buf_w;
 	int		buf_used;
 	int		buf_lost;
-	int		scroll;
 	int		state;
 	u16		parameters[MAX_PARAMETERS];
 	int		parameter_id;
 	int		cursor_x;
 	int		cursor_y;
-	int		cursor_x_stored;
-	int		cursor_y_stored;
-	int		auto_wrap;
-	int		auto_wrap_stored;
 	int		g[4];
 	int		gl;
 	int		gr;
@@ -257,18 +296,26 @@ typedef struct {
 	/* keyboard */
 	unsigned long	repeat_time;
 	int		repeat_state;
-	int		keyboard_locked;
 
-	int		key_count;
-	u16*		keys_down;
+	u32		modifiers;
+	int		last_scancode;
+	u16		repeat_scancode;
+	u16		repeat_char;
 
 	/* user defined keys */
+	u8		udk_key;
+	u8		udk_hex;
+
 	int		udk_locked;
+	u8		udk_ptr[15];
+	u16		udk_len[15];
+	char		udk_memory[256];
+	u16		udk_free;
 
 	/* configuration */
 	VT240NVR	config;
 
-	/*setup screens  */
+	/* setup screens  */
 	int		in_setup;
 	VT240Setup	setup;
 
@@ -459,13 +506,22 @@ void VT240ScrollUp(VT240* vt);
 void VT240ScrollDown(VT240* vt);
 void VT240SetTopBottomMargins(VT240* vt, int top, int bottom);
 void VT240EraseScreen(VT240* vt);
+void VT240ClearComm(VT240* vt);
 void VT240SoftReset(VT240* vt);
 void VT240HardReset(VT240* vt);
+void VT240ClearUDK(VT240* vt, unsigned int key);
+void VT240ClearAllUDK(VT240* vt);
 int  VT240GetCharset(VT240* vt, unsigned char c);
 void VT240ProcessChar(VT240* vt, unsigned char c);
-void VT240ProcessKeys(VT240* vt);
-void VT240KeyDown(VT240* vt, u16 c);
-void VT240KeyUp(VT240* vt, u16 c);
+void VT240ProcessKey(VT240* vt, u16 key);
+void VT240ProcessKeys(VT240* vt, unsigned long dt);
+
+/* keyboard */
+void VT240InitKeyboard(VT240* vt);
+void VT240KeyboardKeyDown(VT240* vt, int key);
+void VT240KeyboardKeyUp(VT240* vt, int key);
+void VT240KeyboardChar(VT240* vt, unsigned int code);
+void VT240KeyboardProcess(VT240* vt, unsigned long dt);
 
 /* setup functions */
 void VT240EnterSetup(VT240* vt);

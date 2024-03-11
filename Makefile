@@ -35,7 +35,7 @@ CFLAGS		:=	$(OPT) -Wall -std=gnu99 \
 			-DGL_GLEXT_PROTOTYPES -DVT240_NO_BUFFER \
 			$(DEBUG) $(ASAN)
 
-LIBS		:=	-lGL -lglut
+LIBS		:=	-lGL -lglfw
 LDFLAGS		:=	-Wl,-x -Wl,--gc-sections $(LIBS) $(OPT) $(ASAN)
 
 CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))

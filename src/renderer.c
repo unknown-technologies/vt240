@@ -252,9 +252,6 @@ void VTRenderTerminal(VTRenderer* self)
 
 	glUniform3fv(self->vt_shader_colorscheme, 8, (GLfloat*) vt240_colors);
 
-	const GLenum buffers[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	glDrawBuffers(2, buffers);
-
 	glBindVertexArray(self->quad_vao);
 	glDrawArrays(GL_TRIANGLES, 0, QUAD_VTX_CNT);
 
@@ -263,8 +260,6 @@ void VTRenderTerminal(VTRenderer* self)
 		glActiveTexture(GL_TEXTURE0 + i);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
-
-	glDrawBuffers(1, buffers);
 
 	GL_ERROR();
 }

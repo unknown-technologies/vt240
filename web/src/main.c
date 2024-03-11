@@ -15,6 +15,7 @@
 #include "types.h"
 #include "vt.h"
 #include "renderer.h"
+#include "keyboard.h"
 
 #define	SCREEN_WIDTH		800
 #define	SCREEN_HEIGHT		480
@@ -103,8 +104,8 @@ void reshape_func(int width, int height)
 
 void kb_func(unsigned char key, int x, int y)
 {
-	if(key == 0x7F) {
-		VT240KeyDown(&vt, VT240_KEY_REMOVE);
+	if(key == BS) {
+		VT240KeyDown(&vt, DEL);
 	} else {
 		VT240KeyDown(&vt, key);
 	}
@@ -112,8 +113,8 @@ void kb_func(unsigned char key, int x, int y)
 
 void kb_up_func(unsigned char key, int x, int y)
 {
-	if(key == 0x7F) {
-		VT240KeyUp(&vt, VT240_KEY_REMOVE);
+	if(key == BS) {
+		VT240KeyUp(&vt, DEL);
 	} else {
 		VT240KeyUp(&vt, key);
 	}
@@ -127,7 +128,7 @@ void special_func(int key, int x, int y)
 			VT240KeyDown(&vt, VT240_KEY_REMOVE);
 			break;
 		case 120:
-			VT240KeyDown(&vt, BS);
+			VT240KeyDown(&vt, DEL);
 			break;
 #endif
 		case GLUT_KEY_F1:
@@ -211,7 +212,7 @@ void special_up_func(int key, int x, int y)
 			VT240KeyUp(&vt, VT240_KEY_REMOVE);
 			break;
 		case 120:
-			VT240KeyUp(&vt, BS);
+			VT240KeyUp(&vt, DEL);
 			break;
 #endif
 		case GLUT_KEY_F1:
@@ -287,7 +288,7 @@ void print_ch(unsigned char c)
 		return;
 	}
 
-	// nothing for now
+	VT240Receive(&vt, c);
 }
 
 void display_func(void)
@@ -374,9 +375,8 @@ int main(int argc, char** argv)
 
 	//glutIgnoreKeyRepeat(1);
 
-	VT240Init(&vt, 80, 24);
+	VT240Init(&vt);
 	vt.rx = print_ch;
-	vt.mode &= ~SRM;
 
 	VTInitRenderer(&renderer, &vt);
 	VTEnableGlow(&renderer, enable_glow);

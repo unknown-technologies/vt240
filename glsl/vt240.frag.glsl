@@ -116,9 +116,7 @@ uniform bool block_cursor;
 uniform vec3 colorscheme[4];
 
 in  vec2 pos;
-
-layout(location = 0) out vec4 color;
-layout(location = 1) out uint mask;
+out vec4 color;
 
 uint VT240GetColorID(uint sgr, bool blink_on)
 {
@@ -312,7 +310,12 @@ void main(void)
 
 	bool underline_cursor = false;
 
-	if((mode & DECTCEM) != 0u && cursor_on && !in_setup && cell == cursor) {
+	uvec2 cursor_cell = cursor;
+	uint line_length = is_132col ? 132u : 80u;
+	if(cursor_cell.x >= line_length) {
+		cursor_cell.x = line_length - 1u;
+	}
+	if((mode & DECTCEM) != 0u && cursor_on && !in_setup && cell == cursor_cell) {
 		if(block_cursor) {
 			if((attr & SGR_BLINKING) != 0u) {
 				blink_on = !blink_on;
@@ -353,8 +356,6 @@ void main(void)
 
 	// get color from graphics framebuffer
 	vec3 graphics = fb.rgb * colorscheme[VT240GetColor(0u, false).y];
-	bool gxmask = fb.rgb != vec3(0.0);
 
 	color = vec4(text_color + graphics, 1.0);
-	mask = (bit || gxmask) ? 1u : 0u;
 }

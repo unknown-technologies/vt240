@@ -28,7 +28,8 @@ static const char* vt240_setup_screen_names[SETUP_SCREEN_COUNT] = {
 	"Telephone Set-Up"
 };
 
-static const char* vt240_keyboard_languages[15] = {
+static const char* vt240_keyboard_languages[16] = {
+	"Unknown Keyboard",
 	"North American Keyboard",
 	"British Keyboard",
 	"Flemish Keyboard",
@@ -187,7 +188,7 @@ void VT240SetupShowTitle(VT240* vt)
 void VT240SetupShowStatus(VT240* vt)
 {
 	VT240SetupGoto(vt, 7, 1);
-	VT240SetupFillRaw(vt, 0x113, 80, 0);
+	VT240SetupFillRaw(vt, '-', 80, 0);
 	VT240SetupGoto(vt, 8, 2);
 	VT240SetupEraseLine(vt);
 	if(vt->mode & IRM) {
@@ -452,10 +453,10 @@ void VT240SetupShowGeneral(VT240* vt)
 	/* line 2 */
 	VT240SetupGoto(vt, 4, 1);
 	VT240SetupEraseLine(vt);
-	if(vt->config.user_defined_keys == VT240_USER_DEFINED_KEYS_UNLOCKED) {
-		VT240SetupWriteString(vt, " User Defined Keys Unlocked ", GET_SGR(1, 0));
-	} else {
+	if(vt->udk_locked) {
 		VT240SetupWriteString(vt, " User Defined Keys Locked   ", GET_SGR(1, 0));
+	} else {
+		VT240SetupWriteString(vt, " User Defined Keys Unlocked ", GET_SGR(1, 0));
 	}
 	VT240SetupCursorRight(vt);
 	if(vt->config.user_features == VT240_USER_FEATURES_UNLOCKED) {
@@ -959,6 +960,11 @@ void VT240SetupDirectoryEnter(VT240* vt)
 					VT240SetCursor(vt, 1, 1);
 					VT240SetupShowDone(vt);
 					break;
+				case 2:
+					/* Clear Comm */
+					VT240ClearComm(vt);
+					VT240SetupShowDone(vt);
+					break;
 				case 3: /* Reset */
 					VT240SoftReset(vt);
 					VT240SetupShowDone(vt);
@@ -972,6 +978,10 @@ void VT240SetupDirectoryEnter(VT240* vt)
 			break;
 		case 2:
 			switch(vt->setup.cursor_x) {
+				case 1: /* Keyboard language */
+					vt->config.keyboard = (vt->config.keyboard + 1) % VT240_KEYBOARD_COUNT;
+					VT240SetupShow(vt);
+					break;
 				case 3: /* Exit */
 					VT240LeaveSetup(vt);
 					break;
@@ -1102,11 +1112,7 @@ void VT240SetupGeneralEnter(VT240* vt)
 		case 1:
 			switch(vt->setup.cursor_x) {
 				case 0:
-					if(vt->config.user_defined_keys == VT240_USER_DEFINED_KEYS_UNLOCKED) {
-						vt->config.user_defined_keys = VT240_USER_DEFINED_KEYS_LOCKED;
-					} else {
-						vt->config.user_defined_keys = VT240_USER_DEFINED_KEYS_UNLOCKED;
-					}
+					vt->udk_locked = !vt->udk_locked;
 					VT240SetupShowScreen(vt);
 					break;
 				case 1:

@@ -24,7 +24,7 @@ Build Requirements
 
 For the native version:
 - Linux with git, gcc and make
-- freeglut
+- glfw3
 - glslang
 - [bin2o](https://github.com/hackyourlife/bin2o)
 
@@ -44,16 +44,17 @@ instead, run `make` in the `web` folder.
 Usage
 -----
 
-`vt240` without arguments launches the VT240 in "local mode", that is, the RX
-and TX pin on the virtual terminal is connected and everything you type is
-directly displayed. This is useful if you want to manually design UI prototypes.
+`vt240 -l` launches the VT240 in "local mode", that is, the RX and TX pin on
+the virtual terminal is connected and everything you type is directly
+displayed. This is useful if you want to manually design UI prototypes.
 
-`vt240 -s` starts the default shell, `vt240 -s /path/to/the/binary` runs an
-arbitrary program in the VT240. The `TERM` environment variable is set to
-`vt220` and if the `LANG` environment variable is set to an UTF-8 language, it
-is reset to `LANG=C` to avoid problems.
+`vt240` without arguments starts the default shell,
+`vt240 -s /path/to/the/binary` runs an arbitrary program in the VT240. The
+`TERM` environment variable is set to `vt220` and if the `LANG` environment
+variable is set to an UTF-8 language, it is reset to `LANG=C` to avoid
+problems.
 
-`vt240 host port` connects to the telnet server `host` at port `port`.
+`vt240 -t host port` connects to the telnet server `host` at port `port`.
 
 
 Keyboard
@@ -77,9 +78,7 @@ Feel free to test this emulator with
 [vttest](https://invisible-island.net/vttest/) to see how good this emulator is.
 
 Compared to a real VT240, the following features are currently missing:
-- 132 character mode
-- UDK ("user defined keys")
-- DLCS ("custom character set")
+- DRCS ("custom character set")
 - ReGIS
 - Tektronix 4014
 - color mode

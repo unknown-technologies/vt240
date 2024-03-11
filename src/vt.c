@@ -43,6 +43,12 @@
 #define	STATE_CSI_GT		13
 #define	STATE_CSI_QUOT		14
 #define	STATE_CSI_EXCL		15
+#define	STATE_DECUDK		16
+#define	STATE_DECUDK_ESC	17
+#define	STATE_DECUDK_ODD	18
+#define	STATE_DECUDK_ODD_ESC	19
+#define	STATE_DECUDK_EVEN	20
+#define	STATE_DECUDK_EVEN_ESC	21
 
 static const VT240NVR default_config = { 0 };
 
@@ -50,9 +56,6 @@ void VT240Init(VT240* vt)
 {
 	vt->cursor_time = 0;
 	vt->config = default_config;
-
-	vt->keys_down = (u16*) malloc(384 * sizeof(u16));
-	memset(vt->keys_down, 0, 384 * sizeof(u16));
 
 	vt->columns = TEXT_WIDTH;
 	vt->lines = TEXT_HEIGHT;
@@ -79,6 +82,7 @@ void VT240Init(VT240* vt)
 	memset(vt->setup.text, 0x20, 8 * TEXT_WIDTH_MAX * sizeof(VT240CELL));
 	memset(vt->setup.line_attributes, 0, 8);
 
+	VT240InitKeyboard(vt);
 	VT240HardReset(vt);
 }
 
@@ -630,12 +634,10 @@ void VT240SetTopBottomMargins(VT240* vt, int top, int bottom)
 		vt->margin_bottom = vt->lines - 1;
 	}
 
+	/* manual says: "the smallest scrolling region allowed is two lines" */
 	if(vt->margin_top == vt->margin_bottom) {
-		if(vt->margin_bottom + 1 < vt->lines) {
-			vt->margin_bottom++;
-		} else {
-			vt->margin_top--;
-		}
+		vt->margin_top = 0;
+		vt->margin_bottom = vt->lines - 1;
 	}
 
 	if(vt->mode & DECOM) {
@@ -1085,6 +1087,19 @@ void VT240SetLineMode(VT240* vt, int mode)
 	}
 }
 
+void VT240ClearComm(VT240* vt)
+{
+	vt->state = 0;
+
+	vt->xoff = 0;
+	vt->sent_xoff = 0;
+
+	vt->buf_r = 0;
+	vt->buf_w = 0;
+	vt->buf_used = 0;
+	vt->buf_lost = 0;
+}
+
 /* DECSTR: page 129 */
 void VT240SoftReset(VT240* vt)
 {
@@ -1093,17 +1108,11 @@ void VT240SoftReset(VT240* vt)
 		vt->tabstops[i] = i % 8 == 7;
 	}
 
-	vt->state = 0;
-	vt->cursor_x_stored = 0;
-	vt->cursor_y_stored = 0;
-	vt->auto_wrap = 1;
-	vt->auto_wrap_stored = 1;
-	vt->scroll = 0;
-	vt->xoff = 0;
+	VT240ClearComm(vt);
+
 	vt->margin_top = 0;
 	vt->margin_bottom = vt->lines - 1;
 	vt->udk_locked = 0;
-	vt->keyboard_locked = 0;
 	vt->sgr = 0;
 
 	vt->mode |= DECTCEM;
@@ -1120,9 +1129,20 @@ void VT240SoftReset(VT240* vt)
 
 	vt->sgr = 0;
 
-	VT240CursorHome(vt);
-	VT240EraseScreen(vt);
-	VT240SaveCursor(vt);
+	/* VT240SaveCursor */
+	vt->saved_cursor_x = 0;
+	vt->saved_cursor_y = 0;
+	vt->saved_sgr = 0;
+	vt->saved_awm = vt->mode & DECAWM;
+	vt->saved_om = vt->mode & DECOM;
+	vt->saved_gl = vt->gl;
+	vt->saved_gr = vt->gr;
+	vt->saved_gl_lock = vt->gl_lock;
+	vt->saved_gr_lock = vt->gr_lock;
+	vt->saved_g[0] = vt->g[0];
+	vt->saved_g[1] = vt->g[1];
+	vt->saved_g[2] = vt->g[2];
+	vt->saved_g[3] = vt->g[3];
 }
 
 /* RIS */
@@ -1177,10 +1197,12 @@ void VT240HardReset(VT240* vt)
 	vt->xoff_point = 64;
 	vt->xon_point = 16;
 	vt->use_xoff = 1;
-	vt->sent_xoff = 0;
 
 	vt->margin_top = 0;
 	vt->margin_bottom = TEXT_HEIGHT - 1;
+
+	vt->udk_locked = 0;
+	VT240ClearAllUDK(vt);
 
 	vt->gl = 0;
 	vt->gl_lock = 0;
@@ -1191,16 +1213,91 @@ void VT240HardReset(VT240* vt)
 	vt->g[2] = CHARSET_DEC_SUPPLEMENTAL;
 	vt->g[3] = CHARSET_DEC_SUPPLEMENTAL;
 
+	VT240CursorHome(vt);
+	VT240EraseScreen(vt);
 	VT240SaveCursor(vt);
 
 	/* TODO: implement properly */
 	memset(vt->answerback, 0, 31);
 
-	vt->fb_dirty = 0;
-
 	if(vt->resize) {
 		vt->resize(vt->columns, vt->lines);
 	}
+}
+
+unsigned int VT240GetUDKNumber(unsigned int key)
+{
+	switch(key) {
+		case 17:
+			return 0;
+		case 18:
+			return 1;
+		case 19:
+			return 2;
+		case 20:
+			return 3;
+		case 21:
+			return 4;
+		case 23:
+			return 5;
+		case 24:
+			return 6;
+		case 25:
+			return 7;
+		case 26:
+			return 8;
+		case 28:
+			return 9;
+		case 29:
+			return 10;
+		case 31:
+			return 11;
+		case 32:
+			return 12;
+		case 33:
+			return 13;
+		case 34:
+			return 14;
+		default:
+			return 0xFF;
+	}
+}
+
+void VT240ClearUDK(VT240* vt, unsigned int key)
+{
+	if(key >= 15) {
+		return;
+	}
+
+	if(vt->udk_len[key]) {
+		u16 ptr = vt->udk_ptr[key];
+		u16 len = vt->udk_len[key];
+		u16 end = ptr + len;
+
+		/* compact */
+		memmove(&vt->udk_memory[ptr], &vt->udk_memory[end], 256 - end);
+
+		/* update pointers */
+		for(unsigned int i = 0; i < 15; i++) {
+			if(vt->udk_len[key] && vt->udk_ptr[key] > ptr) {
+				vt->udk_ptr[key] -= ptr;
+			}
+		}
+
+		vt->udk_ptr[key] = 0;
+		vt->udk_len[key] = 0;
+		vt->udk_free += len;
+
+		assert(vt->udk_free <= 256);
+	}
+}
+
+void VT240ClearAllUDK(VT240* vt)
+{
+	vt->udk_free = 256;
+	memset(vt->udk_ptr, 0, 15);
+	memset(vt->udk_len, 0, 15 * sizeof(u16));
+	memset(vt->udk_memory, 0, 256);
 }
 
 void VT240Substitute(VT240* vt)
@@ -1234,7 +1331,6 @@ void VT240Destroy(VT240* vt)
 	free(vt->buf);
 	free(vt->tabstops);
 	free(vt->text);
-	free(vt->keys_down);
 }
 
 void VT240Bell(VT240* vt)
@@ -2189,7 +2285,7 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 							break;
 						case 26:
 							VT240SendText(vt, "\x9b?27;");
-							VT240SendDecimal(vt, vt->config.keyboard + 1);
+							VT240SendDecimal(vt, vt->config.keyboard);
 							VT240Send(vt, 'n');
 							break;
 					}
@@ -2337,6 +2433,20 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 					vt->sixel_x = 0;
 					vt->sixel_y = 0;
 					break;
+				case '|':
+					if(!vt->vt100_mode) {
+						if(vt->udk_locked || vt->udk_free == 0) {
+							vt->state = STATE_TEXT;
+						} else {
+							if(vt->parameters[0] == 0) {
+								VT240ClearAllUDK(vt);
+							}
+							vt->udk_key = 0;
+							vt->udk_hex = 0;
+							vt->state = STATE_DECUDK;
+						}
+					}
+					break;
 				case ST:
 					vt->state = STATE_TEXT;
 					break;
@@ -2458,6 +2568,231 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 						VT240ProcessCharVT240(vt, c + 0x40);
 					}
 					break;
+			}
+			break;
+		case STATE_DECUDK:
+			switch(c) {
+				case ESC:
+					vt->state = STATE_DECUDK_ESC;
+					break;
+				case CAN:
+					vt->state = STATE_TEXT;
+					break;
+				case SUB:
+					vt->state = STATE_TEXT;
+					VT240Substitute(vt);
+					break;
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9':
+					vt->udk_key = (vt->udk_key * 10) + (c - '0');
+					break;
+				case '/':
+					if(VT240GetUDKNumber(vt->udk_key) >= 15) {
+						/* unrecognized key number, act
+						 * as if it was valid but
+						 * ignore the definition */
+						vt->udk_key = 15;
+						vt->state = STATE_DECUDK_ODD;
+					} else {
+						u16 id = VT240GetUDKNumber(vt->udk_key);
+						vt->udk_key = id;
+						VT240ClearUDK(vt, vt->udk_key);
+						vt->udk_ptr[id] = 256 - vt->udk_free;
+						vt->udk_hex = 0;
+						vt->state = STATE_DECUDK_ODD;
+					}
+					break;
+				case ST:
+					vt->udk_locked = vt->parameters[1] == 0;
+					vt->state = STATE_TEXT;
+					break;
+				default:
+					vt->state = STATE_TEXT;
+					vt->udk_locked = 1;
+					break;
+			}
+			break;
+		case STATE_DECUDK_ESC:
+			if((c + 0x40) >= 0x80 && (c + 0x40) < 0xA0) {
+				vt->state = STATE_DECUDK;
+				VT240ProcessCharVT240(vt, c + 0x40);
+			} else {
+				vt->state = STATE_TEXT;
+				vt->udk_locked = 1;
+			}
+			break;
+		case STATE_DECUDK_ODD:
+			switch(c) {
+				case ESC:
+					vt->state = STATE_DECUDK_ODD_ESC;
+					break;
+				case CAN:
+					vt->state = STATE_TEXT;
+					break;
+				case SUB:
+					vt->state = STATE_TEXT;
+					VT240Substitute(vt);
+					break;
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9':
+					vt->udk_hex = c - '0';
+					vt->state = STATE_DECUDK_EVEN;
+					break;
+				case 'A':
+				case 'B':
+				case 'C':
+				case 'D':
+				case 'E':
+				case 'F':
+					vt->udk_hex = c - 'A' + 10;
+					vt->state = STATE_DECUDK_EVEN;
+					break;
+				case 'a':
+				case 'b':
+				case 'c':
+				case 'd':
+				case 'e':
+				case 'f':
+					vt->udk_hex = c - 'a' + 10;
+					vt->state = STATE_DECUDK_EVEN;
+					break;
+				case ';':
+					vt->udk_key = 0;
+					vt->state = STATE_DECUDK;
+					break;
+				case ST:
+					vt->udk_locked = vt->parameters[1] == 0;
+					vt->state = STATE_TEXT;
+					break;
+				default:
+					vt->state = STATE_TEXT;
+					vt->udk_locked = 1;
+					break;
+			}
+			break;
+		case STATE_DECUDK_ODD_ESC:
+			if((c + 0x40) >= 0x80 && (c + 0x40) < 0xA0) {
+				vt->state = STATE_DECUDK_ODD;
+				VT240ProcessCharVT240(vt, c + 0x40);
+			} else {
+				vt->state = STATE_TEXT;
+				vt->udk_locked = 1;
+			}
+			break;
+		case STATE_DECUDK_EVEN:
+			switch(c) {
+				case ESC:
+					vt->state = STATE_DECUDK_EVEN_ESC;
+					break;
+				case CAN:
+					vt->state = STATE_TEXT;
+					break;
+				case SUB:
+					vt->state = STATE_TEXT;
+					VT240Substitute(vt);
+					break;
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9':
+					vt->udk_hex = (vt->udk_hex << 4) | (c - '0');
+					if(vt->udk_free != 0) {
+						unsigned int key = vt->udk_key;
+						if(key < 15) {
+							vt->udk_memory[vt->udk_ptr[key] + vt->udk_len[key]] = (u8) vt->udk_hex;
+							vt->udk_len[key]++;
+							vt->udk_free--;
+						}
+						vt->state = STATE_DECUDK_ODD;
+					} else {
+						vt->state = STATE_TEXT;
+						vt->udk_locked = 1;
+					}
+					break;
+				case 'A':
+				case 'B':
+				case 'C':
+				case 'D':
+				case 'E':
+				case 'F':
+					vt->udk_hex = (vt->udk_hex << 4) | (c - 'A' + 10);
+					if(vt->udk_free != 0) {
+						unsigned int key = vt->udk_key;
+						if(key < 15) {
+							vt->udk_memory[vt->udk_ptr[key] + vt->udk_len[key]] = (u8) vt->udk_hex;
+							vt->udk_len[key]++;
+							vt->udk_free--;
+						}
+						vt->state = STATE_DECUDK_ODD;
+					} else {
+						vt->state = STATE_TEXT;
+						vt->udk_locked = 1;
+					}
+					break;
+				case 'a':
+				case 'b':
+				case 'c':
+				case 'd':
+				case 'e':
+				case 'f':
+					vt->udk_hex = (vt->udk_hex << 4) | (c - 'a' + 10);
+					if(vt->udk_free != 0) {
+						unsigned int key = vt->udk_key;
+						if(key < 15) {
+							vt->udk_memory[vt->udk_ptr[key] + vt->udk_len[key]] = (u8) vt->udk_hex;
+							vt->udk_len[key]++;
+							vt->udk_free--;
+						}
+						vt->state = STATE_DECUDK_ODD;
+					} else {
+						vt->state = STATE_TEXT;
+						vt->udk_locked = 1;
+					}
+					break;
+				case ST:
+					vt->udk_locked = vt->parameters[1] == 0;
+					vt->state = STATE_TEXT;
+					break;
+				case ';':
+				default:
+					if((c + 0x40) >= 0x80 && (c + 0x40) < 0xA0) {
+						VT240ProcessCharVT240(vt, c + 0x40);
+					} else {
+						vt->state = STATE_TEXT;
+						vt->udk_locked = 1;
+					}
+					break;
+			}
+			break;
+		case STATE_DECUDK_EVEN_ESC:
+			if((c + 0x40) >= 0x80 && (c + 0x40) < 0xA0) {
+				vt->state = STATE_DECUDK_EVEN;
+				VT240ProcessCharVT240(vt, c + 0x40);
+			} else {
+				vt->state = STATE_TEXT;
+				vt->udk_locked = 1;
 			}
 			break;
 	}
@@ -2619,10 +2954,10 @@ void VT240ProcessCharVT52(VT240* vt, unsigned char c)
 					VT240IdentifyVT52(vt);
 					break;
 				case '=':
-					vt->mode |= KAM;
+					vt->mode |= DECKPAM;
 					break;
 				case '>':
-					vt->mode &= ~KAM;
+					vt->mode &= ~DECKPAM;
 					break;
 				case '<':
 					VT240SetANSIMode(vt);
@@ -2823,11 +3158,10 @@ void VT240ReceiveText(VT240* vt, const char* s)
 
 void VT240Process(VT240* vt, unsigned long dt)
 {
-	vt->repeat_time += dt;
 	vt->cursor_time = (vt->cursor_time + dt)
 		% (unsigned long) roundf(CURSOR_TIME * 1000.0f);
 
-	VT240ProcessKeys(vt);
+	VT240ProcessKeys(vt, dt);
 
 	while(vt->buf_used > 0) {
 		unsigned char c = vt->buf[vt->buf_r++];
@@ -2919,21 +3253,6 @@ void VT240ProcessKeyVT240(VT240* vt, u16 key)
 			}
 			VT240SendInput(vt, 'D');
 			break;
-		case VT240_KEY_HOLD_SCREEN:
-		case VT240_KEY_PRINT_SCREEN:
-			break;
-		case VT240_KEY_SET_UP:
-			if(vt->in_setup) {
-				VT240LeaveSetup(vt);
-			} else {
-				VT240EnterSetup(vt);
-			}
-			break;
-		case VT240_KEY_DATA_TALK:
-		case VT240_KEY_BREAK:
-			/* local function keys */
-			/* TODO: implement */
-			break;
 		case VT240_KEY_F6:
 			VT240SendInput(vt, CSI);
 			VT240SendInput(vt, '1');
@@ -3024,8 +3343,246 @@ void VT240ProcessKeyVT240(VT240* vt, u16 key)
 			VT240SendInput(vt, '4');
 			VT240SendInput(vt, '~');
 			break;
+		case VT240_KEY_F6_UDK:
+			if(vt->udk_len[0]) {
+				for(unsigned int i = 0; i < vt->udk_len[0]; i++) {
+					VT240SendInput(vt, vt->udk_memory[vt->udk_ptr[0] + i]);
+				}
+			}
+			break;
+		case VT240_KEY_F7_UDK:
+			if(vt->udk_len[1]) {
+				for(unsigned int i = 0; i < vt->udk_len[1]; i++) {
+					VT240SendInput(vt, vt->udk_memory[vt->udk_ptr[1] + i]);
+				}
+			}
+			break;
+		case VT240_KEY_F8_UDK:
+			if(vt->udk_len[2]) {
+				for(unsigned int i = 0; i < vt->udk_len[2]; i++) {
+					VT240SendInput(vt, vt->udk_memory[vt->udk_ptr[2] + i]);
+				}
+			}
+			break;
+		case VT240_KEY_F9_UDK:
+			if(vt->udk_len[3]) {
+				for(unsigned int i = 0; i < vt->udk_len[3]; i++) {
+					VT240SendInput(vt, vt->udk_memory[vt->udk_ptr[3] + i]);
+				}
+			}
+			break;
+		case VT240_KEY_F10_UDK:
+			if(vt->udk_len[4]) {
+				for(unsigned int i = 0; i < vt->udk_len[4]; i++) {
+					VT240SendInput(vt, vt->udk_memory[vt->udk_ptr[4] + i]);
+				}
+			}
+			break;
+		case VT240_KEY_F11_UDK:
+			if(vt->udk_len[5]) {
+				for(unsigned int i = 0; i < vt->udk_len[5]; i++) {
+					VT240SendInput(vt, vt->udk_memory[vt->udk_ptr[5] + i]);
+				}
+			}
+			break;
+		case VT240_KEY_F12_UDK:
+			if(vt->udk_len[6]) {
+				for(unsigned int i = 0; i < vt->udk_len[6]; i++) {
+					VT240SendInput(vt, vt->udk_memory[vt->udk_ptr[6] + i]);
+				}
+			}
+			break;
+		case VT240_KEY_F13_UDK:
+			if(vt->udk_len[7]) {
+				for(unsigned int i = 0; i < vt->udk_len[7]; i++) {
+					VT240SendInput(vt, vt->udk_memory[vt->udk_ptr[7] + i]);
+				}
+			}
+			break;
+		case VT240_KEY_F14_UDK:
+			if(vt->udk_len[8]) {
+				for(unsigned int i = 0; i < vt->udk_len[8]; i++) {
+					VT240SendInput(vt, vt->udk_memory[vt->udk_ptr[8] + i]);
+				}
+			}
+			break;
+		case VT240_KEY_F15_UDK:
+			if(vt->udk_len[9]) {
+				for(unsigned int i = 0; i < vt->udk_len[9]; i++) {
+					VT240SendInput(vt, vt->udk_memory[vt->udk_ptr[9] + i]);
+				}
+			}
+			break;
+		case VT240_KEY_F16_UDK:
+			if(vt->udk_len[10]) {
+				for(unsigned int i = 0; i < vt->udk_len[10]; i++) {
+					VT240SendInput(vt, vt->udk_memory[vt->udk_ptr[10] + i]);
+				}
+			}
+			break;
+		case VT240_KEY_F17_UDK:
+			if(vt->udk_len[11]) {
+				for(unsigned int i = 0; i < vt->udk_len[11]; i++) {
+					VT240SendInput(vt, vt->udk_memory[vt->udk_ptr[11] + i]);
+				}
+			}
+			break;
+		case VT240_KEY_F18_UDK:
+			if(vt->udk_len[12]) {
+				for(unsigned int i = 0; i < vt->udk_len[12]; i++) {
+					VT240SendInput(vt, vt->udk_memory[vt->udk_ptr[12] + i]);
+				}
+			}
+			break;
+		case VT240_KEY_F19_UDK:
+			if(vt->udk_len[13]) {
+				for(unsigned int i = 0; i < vt->udk_len[13]; i++) {
+					VT240SendInput(vt, vt->udk_memory[vt->udk_ptr[13] + i]);
+				}
+			}
+			break;
+		case VT240_KEY_F20_UDK:
+			if(vt->udk_len[14]) {
+				for(unsigned int i = 0; i < vt->udk_len[14]; i++) {
+					VT240SendInput(vt, vt->udk_memory[vt->udk_ptr[14] + i]);
+				}
+			}
+			break;
+		case VT240_KEY_KP_0:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'p');
+			} else {
+				VT240SendInput(vt, '0');
+			}
+			break;
+		case VT240_KEY_KP_1:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'q');
+			} else {
+				VT240SendInput(vt, '1');
+			}
+			break;
+		case VT240_KEY_KP_2:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'r');
+			} else {
+				VT240SendInput(vt, '2');
+			}
+			break;
+		case VT240_KEY_KP_3:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 's');
+			} else {
+				VT240SendInput(vt, '3');
+			}
+			break;
+		case VT240_KEY_KP_4:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 't');
+			} else {
+				VT240SendInput(vt, '4');
+			}
+			break;
+		case VT240_KEY_KP_5:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'u');
+			} else {
+				VT240SendInput(vt, '5');
+			}
+			break;
+		case VT240_KEY_KP_6:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'v');
+			} else {
+				VT240SendInput(vt, '6');
+			}
+			break;
+		case VT240_KEY_KP_7:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'w');
+			} else {
+				VT240SendInput(vt, '7');
+			}
+			break;
+		case VT240_KEY_KP_8:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'x');
+			} else {
+				VT240SendInput(vt, '8');
+			}
+			break;
+		case VT240_KEY_KP_9:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'y');
+			} else {
+				VT240SendInput(vt, '9');
+			}
+			break;
+		case VT240_KEY_KP_MINUS:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'm');
+			} else {
+				VT240SendInput(vt, '-');
+			}
+			break;
+		case VT240_KEY_KP_COMMA:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'l');
+			} else {
+				VT240SendInput(vt, ',');
+			}
+			break;
+		case VT240_KEY_KP_PERIOD:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'n');
+			} else {
+				VT240SendInput(vt, '.');
+			}
+			break;
+		case VT240_KEY_KP_ENTER:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'M');
+			} else {
+				VT240SendInput(vt, CR);
+				if(vt->mode & LNM) {
+					VT240SendInput(vt, LF);
+				}
+			}
+			break;
+		case VT240_KEY_KP_PF1:
+			VT240SendInput(vt, SS3);
+			VT240SendInput(vt, 'P');
+			break;
+		case VT240_KEY_KP_PF2:
+			VT240SendInput(vt, SS3);
+			VT240SendInput(vt, 'Q');
+			break;
+		case VT240_KEY_KP_PF3:
+			VT240SendInput(vt, SS3);
+			VT240SendInput(vt, 'R');
+			break;
+		case VT240_KEY_KP_PF4:
+			VT240SendInput(vt, SS3);
+			VT240SendInput(vt, 'S');
+			break;
 		default:
-			VT240SendInput(vt, key);
+			if(key < 0x100) {
+				VT240SendInput(vt, key);
+			}
 	}
 
 }
@@ -3109,6 +3666,137 @@ void VT240ProcessKeyVT100(VT240* vt, u16 key)
 		case VT240_KEY_F19:
 		case VT240_KEY_F20:
 			break;
+		case VT240_KEY_KP_0:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'p');
+			} else {
+				VT240SendInput(vt, '0');
+			}
+			break;
+		case VT240_KEY_KP_1:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'q');
+			} else {
+				VT240SendInput(vt, '1');
+			}
+			break;
+		case VT240_KEY_KP_2:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'r');
+			} else {
+				VT240SendInput(vt, '2');
+			}
+			break;
+		case VT240_KEY_KP_3:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 's');
+			} else {
+				VT240SendInput(vt, '3');
+			}
+			break;
+		case VT240_KEY_KP_4:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 't');
+			} else {
+				VT240SendInput(vt, '4');
+			}
+			break;
+		case VT240_KEY_KP_5:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'u');
+			} else {
+				VT240SendInput(vt, '5');
+			}
+			break;
+		case VT240_KEY_KP_6:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'v');
+			} else {
+				VT240SendInput(vt, '6');
+			}
+			break;
+		case VT240_KEY_KP_7:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'w');
+			} else {
+				VT240SendInput(vt, '7');
+			}
+			break;
+		case VT240_KEY_KP_8:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'x');
+			} else {
+				VT240SendInput(vt, '8');
+			}
+			break;
+		case VT240_KEY_KP_9:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'y');
+			} else {
+				VT240SendInput(vt, '9');
+			}
+			break;
+		case VT240_KEY_KP_MINUS:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'm');
+			} else {
+				VT240SendInput(vt, '-');
+			}
+			break;
+		case VT240_KEY_KP_COMMA:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'l');
+			} else {
+				VT240SendInput(vt, ',');
+			}
+			break;
+		case VT240_KEY_KP_PERIOD:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'n');
+			} else {
+				VT240SendInput(vt, '.');
+			}
+			break;
+		case VT240_KEY_KP_ENTER:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, SS3);
+				VT240SendInput(vt, 'M');
+			} else {
+				VT240SendInput(vt, CR);
+				if(vt->mode & LNM) {
+					VT240SendInput(vt, LF);
+				}
+			}
+			break;
+		case VT240_KEY_KP_PF1:
+			VT240SendInput(vt, SS3);
+			VT240SendInput(vt, 'P');
+			break;
+		case VT240_KEY_KP_PF2:
+			VT240SendInput(vt, SS3);
+			VT240SendInput(vt, 'Q');
+			break;
+		case VT240_KEY_KP_PF3:
+			VT240SendInput(vt, SS3);
+			VT240SendInput(vt, 'R');
+			break;
+		case VT240_KEY_KP_PF4:
+			VT240SendInput(vt, SS3);
+			VT240SendInput(vt, 'S');
+			break;
 		default:
 			if(key < 0x80) {
 				VT240SendInput(vt, key);
@@ -3149,21 +3837,6 @@ void VT240ProcessKeyVT52(VT240* vt, u16 key)
 			VT240SendInput(vt, ESC);
 			VT240SendInput(vt, 'D');
 			break;
-		case VT240_KEY_HOLD_SCREEN:
-		case VT240_KEY_PRINT_SCREEN:
-			break;
-		case VT240_KEY_SET_UP:
-			if(vt->in_setup) {
-				VT240LeaveSetup(vt);
-			} else {
-				VT240EnterSetup(vt);
-			}
-			break;
-		case VT240_KEY_DATA_TALK:
-		case VT240_KEY_BREAK:
-			/* local function keys */
-			/* TODO: implement */
-			break;
 		case VT240_KEY_F6:
 		case VT240_KEY_F7:
 		case VT240_KEY_F8:
@@ -3187,6 +3860,151 @@ void VT240ProcessKeyVT52(VT240* vt, u16 key)
 		case VT240_KEY_F19:
 		case VT240_KEY_F20:
 			break;
+		case VT240_KEY_KP_0:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, ESC);
+				VT240SendInput(vt, '?');
+				VT240SendInput(vt, 'p');
+			} else {
+				VT240SendInput(vt, '0');
+			}
+			break;
+		case VT240_KEY_KP_1:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, ESC);
+				VT240SendInput(vt, '?');
+				VT240SendInput(vt, 'q');
+			} else {
+				VT240SendInput(vt, '1');
+			}
+			break;
+		case VT240_KEY_KP_2:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, ESC);
+				VT240SendInput(vt, '?');
+				VT240SendInput(vt, 'r');
+			} else {
+				VT240SendInput(vt, '2');
+			}
+			break;
+		case VT240_KEY_KP_3:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, ESC);
+				VT240SendInput(vt, '?');
+				VT240SendInput(vt, 's');
+			} else {
+				VT240SendInput(vt, '3');
+			}
+			break;
+		case VT240_KEY_KP_4:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, ESC);
+				VT240SendInput(vt, '?');
+				VT240SendInput(vt, 't');
+			} else {
+				VT240SendInput(vt, '4');
+			}
+			break;
+		case VT240_KEY_KP_5:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, ESC);
+				VT240SendInput(vt, '?');
+				VT240SendInput(vt, 'u');
+			} else {
+				VT240SendInput(vt, '5');
+			}
+			break;
+		case VT240_KEY_KP_6:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, ESC);
+				VT240SendInput(vt, '?');
+				VT240SendInput(vt, 'v');
+			} else {
+				VT240SendInput(vt, '6');
+			}
+			break;
+		case VT240_KEY_KP_7:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, ESC);
+				VT240SendInput(vt, '?');
+				VT240SendInput(vt, 'w');
+			} else {
+				VT240SendInput(vt, '7');
+			}
+			break;
+		case VT240_KEY_KP_8:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, ESC);
+				VT240SendInput(vt, '?');
+				VT240SendInput(vt, 'x');
+			} else {
+				VT240SendInput(vt, '8');
+			}
+			break;
+		case VT240_KEY_KP_9:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, ESC);
+				VT240SendInput(vt, '?');
+				VT240SendInput(vt, 'y');
+			} else {
+				VT240SendInput(vt, '9');
+			}
+			break;
+		case VT240_KEY_KP_MINUS:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, ESC);
+				VT240SendInput(vt, '?');
+				VT240SendInput(vt, 'm');
+			} else {
+				VT240SendInput(vt, '-');
+			}
+			break;
+		case VT240_KEY_KP_COMMA:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, ESC);
+				VT240SendInput(vt, '?');
+				VT240SendInput(vt, 'l');
+			} else {
+				VT240SendInput(vt, ',');
+			}
+			break;
+		case VT240_KEY_KP_PERIOD:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, ESC);
+				VT240SendInput(vt, '?');
+				VT240SendInput(vt, 'n');
+			} else {
+				VT240SendInput(vt, '.');
+			}
+			break;
+		case VT240_KEY_KP_ENTER:
+			if(vt->mode & DECKPAM) {
+				VT240SendInput(vt, ESC);
+				VT240SendInput(vt, '?');
+				VT240SendInput(vt, 'M');
+			} else {
+				VT240SendInput(vt, CR);
+				if(vt->mode & LNM) {
+					VT240SendInput(vt, LF);
+				}
+			}
+			break;
+		case VT240_KEY_KP_PF1:
+			VT240SendInput(vt, ESC);
+			VT240SendInput(vt, 'P');
+			break;
+		case VT240_KEY_KP_PF2:
+			VT240SendInput(vt, ESC);
+			VT240SendInput(vt, 'Q');
+			break;
+		case VT240_KEY_KP_PF3:
+			VT240SendInput(vt, ESC);
+			VT240SendInput(vt, 'R');
+			break;
+		case VT240_KEY_KP_PF4:
+			VT240SendInput(vt, ESC);
+			VT240SendInput(vt, 'S');
+			break;
 		default:
 			if(key < 0x80) {
 				VT240SendInput(vt, key);
@@ -3196,6 +4014,32 @@ void VT240ProcessKeyVT52(VT240* vt, u16 key)
 
 void VT240ProcessKey(VT240* vt, u16 key)
 {
+	if(key == VT240_KEY_SET_UP) {
+		if(vt->in_setup) {
+			VT240LeaveSetup(vt);
+		} else {
+			VT240EnterSetup(vt);
+		}
+		return;
+	}
+
+	if(!vt->in_setup && vt->mode & KAM) {
+		return;
+	}
+
+	vt->cursor_time = 0;
+	VT240Keyclick(vt);
+
+	switch(key) {
+		/* local function keys */
+		case VT240_KEY_HOLD_SCREEN:
+		case VT240_KEY_PRINT_SCREEN:
+		case VT240_KEY_DATA_TALK:
+		case VT240_KEY_BREAK:
+			/* TODO: implement */
+			return;
+	}
+
 	if(vt->mode & DECANM) {
 		if(vt->vt100_mode) {
 			VT240ProcessKeyVT100(vt, key);
@@ -3205,87 +4049,4 @@ void VT240ProcessKey(VT240* vt, u16 key)
 	} else {
 		VT240ProcessKeyVT52(vt, key);
 	}
-}
-
-void VT240ProcessKeys(VT240* vt)
-{
-	int i, j;
-	int count = 0;
-
-	if(!(vt->mode & DECARM)) {
-		return;
-	}
-
-	if(vt->key_count == 0) {
-		return;
-	}
-
-	if(vt->repeat_state == 0) {
-		if(vt->repeat_time < 500) {
-			return;
-		} else {
-			vt->repeat_time = 0;
-			vt->repeat_state = 1;
-		}
-	} else if(vt->repeat_state == 1) {
-		float cnt = (vt->repeat_time * 30) / 1000.0f;
-		count = (int) cnt;
-		if(count > 0) {
-			vt->repeat_time -= count * (1000.0f / 30.0f);
-		}
-	}
-
-	if(count > 0) {
-		vt->cursor_time = 0;
-	}
-
-	for(j = 0; j < count; j++) {
-		for(i = 0; i < vt->key_count; i++) {
-			u16 key = vt->keys_down[i];
-			VT240ProcessKey(vt, key);
-		}
-	}
-}
-
-void VT240KeyDown(VT240* vt, u16 key)
-{
-	if(!vt->keyboard_locked) {
-		if((vt->repeat_state == 0 && vt->repeat_time >= 500) || (vt->repeat_state == 1)) {
-			vt->repeat_state = 0;
-			vt->key_count = 0;
-			memset(vt->keys_down, 0, 384 * sizeof(u16));
-		}
-
-		vt->repeat_time = 0;
-		vt->repeat_state = 0;
-		vt->keys_down[vt->key_count++] = key;
-
-		vt->cursor_time = 0;
-
-		VT240ProcessKey(vt, key);
-
-		VT240Keyclick(vt);
-	}
-}
-
-void VT240KeyUp(VT240* vt, u16 key)
-{
-	int i;
-	int found = 0;
-
-	if(vt->key_count == 0) {
-		return;
-	}
-
-	for(i = 0; i < vt->key_count; i++) {
-		if(found) {
-			vt->keys_down[i - 1] = vt->keys_down[i];
-		} else if(vt->keys_down[i] == key) {
-			found = 1;
-		}
-	}
-
-	vt->key_count--;
-	vt->repeat_time = 0;
-	vt->repeat_state = 0;
 }
