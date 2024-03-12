@@ -322,7 +322,7 @@ int main(int argc, char** argv)
 				evt.keyCode = e.keyCode;
 				let result = __old_getASCIIKey(evt);
 				if(result != null && result >= 97 && result <= 122) {
-					return result - 97;
+					return result - 96;
 				} else {
 					return null;
 				}
