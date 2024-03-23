@@ -84,7 +84,7 @@ static const struct KeyMapEntry VT240KeyMap[] = {
 static const int VT240KeyMapLength = sizeof(VT240KeyMap) / sizeof(struct KeyMapEntry);
 
 u8 getModifierBitmask(const EmscriptenKeyboardEvent *e) {
-	if (e->ctrlKey || e->altKey || e->metaKey || e->shiftKey) {
+	if(e->ctrlKey || e->altKey || e->metaKey || e->shiftKey) {
 		return (u8) (
 			(e->ctrlKey << 1) |
 			(e->altKey << 2) |
@@ -98,61 +98,52 @@ u8 getModifierBitmask(const EmscriptenKeyboardEvent *e) {
 
 EM_BOOL handleKeyboardInput(int eventType, const EmscriptenKeyboardEvent *e, void* userData)
 {
-	// first cast the userData to the actual vt we want to use.
 	VT240* vt = (VT240*) userData;
 
-	// if repeat is disabled, but this is an repeat event, just skip it.
-	if (e->repeat && !(vt->mode & DECARM)) {
+	if(e->repeat && !(vt->mode & DECARM)) {
 		return EM_TRUE;
 	}
-	// else we check, whether the key is a special key with a mapping
 
 	const struct KeyMapEntry* mappedKey = NULL;
 
-	for (int i = 0; i < VT240KeyMapLength; i++) {
-		if (
+	for(int i = 0; i < VT240KeyMapLength; i++) {
+		if(
 			strncmp(e->code, VT240KeyMap[i].code, 32) == 0 && (
 				(VT240KeyMap[i].modifiers == KEY_MODIFIER_IGNORE) ||
 				(VT240KeyMap[i].modifiers == getModifierBitmask(e))
 			)
 		) {
 			mappedKey = &VT240KeyMap[i];
-
 			break;
 		}
 	}
 
-	// if we found any key, let's send it to the vt
-	if (mappedKey != NULL) {
+	if(mappedKey != NULL) {
 		VT240ProcessKey(vt, mappedKey->vtKey);
 	}
-	// else we check, whether it's a printable character
-	else if (strlen(e->key) == 1 && e->key[0] >= 0x20) {
+	else if(strlen(e->key) == 1 && e->key[0] >= 0x20) {
 		if (e->ctrlKey) {
-			if (e->key[0] >= 'a' && e->key[0] <= 'z') {
+			if(e->key[0] >= 'A' && e->key[0] <= 'Z') {
+				VT240ProcessKey(vt, e->key[0] - 0x40);
+			} else if(e->key[0] >= 'a' && e->key[0] <= 'z') {
 				VT240ProcessKey(vt, e->key[0] - 0x60);
 			}
-			else if (e->key[0] >= 'A' && e->key[0] <= 'Z') {
-				VT240ProcessKey(vt, e->key[0] - 0x40);
-			}
-		}
-		else {
+		} else {
 			VT240ProcessKey(vt, e->key[0]);
 		}
 	}
-	else if (strlen(e->key) == 2) {
+	else if(strlen(e->key) == 2) {
 		u16 upper = (u16) (e->key[0] & 0x1F);
 		u16 lower = (u16) (e->key[1] & 0x3F);
 		u16 utf8Value = (upper << 6) + lower;
 
-		switch (utf8Value) {
+		switch(utf8Value) {
 			case 0xA4:
 				utf8Value = 0xA8;
 				break;
 			case 0xFF:
 				utf8Value = 0xFD;
 				break;
-			// these are control characters, so we filter them
 			case 0xA6:
 			case 0xAC:
 			case 0xAD:
@@ -168,26 +159,21 @@ EM_BOOL handleKeyboardInput(int eventType, const EmscriptenKeyboardEvent *e, voi
 				utf8Value = 0;
 				break;
 			default:
-				// the utf8 value is just right
 				break;
 		}
 
-		if (utf8Value > 0xA0 && utf8Value < 0xFF) {
+		if(utf8Value > 0xA0 && utf8Value < 0xFF) {
 			VT240ProcessKey(vt, utf8Value);
 		}
-	}
-	// else it's an unmapped key, so just log it.
-	else {
+	} else {
 		printf("Found unmapped key, key: '%s', code: '%s', bitmask: '%x'\n", e->key, e->code, getModifierBitmask(e));
 	}
 
-	// return true as "preventDefault"
 	return EM_TRUE;
 }
 
 void VT240InitKeyboard(VT240* vt)
 {
-	// we're passing vt as "void* userData" to the handleKeyboardInput.
 	emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, vt, EM_TRUE, handleKeyboardInput);
 }
 
