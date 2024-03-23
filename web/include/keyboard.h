@@ -2,9 +2,9 @@
 #define __KEYBOARD_H__
 
 #include "vt.h"
+#include <emscripten/html5.h>
 
 void VT240InitKeyboard(VT240* vt);
-void VT240KeyDown(VT240* vt, u16 key);
-void VT240KeyUp(VT240* vt, u16 key);
+EM_BOOL handleKeyboardInput(int eventType, const EmscriptenKeyboardEvent *e, void* userData);
 
 #endif
