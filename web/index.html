@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>VT240 Build Demo</title>
+		<meta charset="utf-8"/>
+
+		<style>
+			.fullwindow {
+				position: absolute;
+				top: 0px;
+				left: 0px;
+				margin: 0px;
+				border: 0;
+				width: 100%;
+				height: 100%;
+				overflow: hidden;
+				display: block;
+			}
+		</style>
+	</head>
+	<body style="background-color: black;">
+		<canvas class = "fullwindow" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+		<script type="text/javascript">
+			var Module = {};
+			Module.canvas = document.getElementById('canvas');
+		</script>
+		<script async type="text/javascript" src="build/vt240.js"></script>
+	</body>
+</html>
