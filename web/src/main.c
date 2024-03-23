@@ -8,9 +8,7 @@
 
 #include <math.h>
 
-#ifdef __EMSCRIPTEN__
 #include <emscripten/html5.h>
-#endif
 
 #include "types.h"
 #include "vt.h"
@@ -21,7 +19,6 @@
 #define	SCREEN_HEIGHT		480
 
 static bool enable_glow = true;
-static bool is_fullscreen = false;
 
 static int screen_width;
 static int screen_height;
@@ -70,7 +67,6 @@ void check_error(const char* filename, unsigned int line)
 }
 #endif
 
-#ifdef __EMSCRIPTEN__
 static void check_for_reshape()
 {
 	double canvas_width;
@@ -82,7 +78,6 @@ static void check_for_reshape()
 		glutReshapeWindow((int) canvas_width, (int) canvas_height);
 	}
 }
-#endif
 
 __attribute__((weak))
 void SYSReceive(unsigned char c)
@@ -131,193 +126,12 @@ void reshape_func(int width, int height)
 	screen_height = height;
 }
 
-void kb_func(unsigned char key, int x, int y)
-{
-	if(key == BS) {
-		VT240KeyDown(&vt, DEL);
-	} else {
-		VT240KeyDown(&vt, key);
-	}
-}
-
-void kb_up_func(unsigned char key, int x, int y)
-{
-	if(key == BS) {
-		VT240KeyUp(&vt, DEL);
-	} else {
-		VT240KeyUp(&vt, key);
-	}
-}
-
-void special_func(int key, int x, int y)
-{
-	switch(key) {
-#ifdef __EMSCRIPTEN__
-		case 111:
-			VT240KeyDown(&vt, VT240_KEY_REMOVE);
-			break;
-		case 120:
-			VT240KeyDown(&vt, DEL);
-			break;
-#endif
-		case GLUT_KEY_F1:
-			VT240KeyDown(&vt, VT240_KEY_HOLD_SCREEN);
-			break;
-		case GLUT_KEY_F2:
-			// VT240KeyDown(&vt, VT240_KEY_PRINT_SCREEN);
-			if(is_fullscreen) {
-				glutReshapeWindow(SCREEN_WIDTH, SCREEN_HEIGHT);
-			} else {
-				glutFullScreen();
-			}
-			is_fullscreen = !is_fullscreen;
-			break;
-		case GLUT_KEY_F3:
-			VT240KeyDown(&vt, VT240_KEY_SET_UP);
-			break;
-		case GLUT_KEY_F4:
-			VT240KeyDown(&vt, VT240_KEY_DATA_TALK);
-			break;
-		case GLUT_KEY_F5:
-			// VT240KeyDown(&vt, VT240_KEY_BREAK);
-			// exit(0);
-			break;
-		case GLUT_KEY_F6:
-			VT240KeyDown(&vt, VT240_KEY_F6);
-			break;
-		case GLUT_KEY_F7:
-			VT240KeyDown(&vt, VT240_KEY_F7);
-			break;
-		case GLUT_KEY_F8:
-			VT240KeyDown(&vt, VT240_KEY_F8);
-			break;
-		case GLUT_KEY_F9:
-			VT240KeyDown(&vt, VT240_KEY_F9);
-			break;
-		case GLUT_KEY_F10:
-			VT240KeyDown(&vt, VT240_KEY_F10);
-			break;
-		case GLUT_KEY_F11:
-			VT240KeyDown(&vt, VT240_KEY_F11);
-			break;
-		case GLUT_KEY_F12:
-			VT240KeyDown(&vt, VT240_KEY_F12);
-			break;
-		case GLUT_KEY_LEFT:
-			VT240KeyDown(&vt, VT240_KEY_LEFT);
-			break;
-		case GLUT_KEY_UP:
-			VT240KeyDown(&vt, VT240_KEY_UP);
-			break;
-		case GLUT_KEY_RIGHT:
-			VT240KeyDown(&vt, VT240_KEY_RIGHT);
-			break;
-		case GLUT_KEY_DOWN:
-			VT240KeyDown(&vt, VT240_KEY_DOWN);
-			break;
-		case GLUT_KEY_PAGE_UP:
-			VT240KeyDown(&vt, VT240_KEY_PREV_SCREEN);
-			break;
-		case GLUT_KEY_PAGE_DOWN:
-			VT240KeyDown(&vt, VT240_KEY_NEXT_SCREEN);
-			break;
-		case GLUT_KEY_HOME:
-			VT240KeyDown(&vt, VT240_KEY_FIND);
-			break;
-		case GLUT_KEY_END:
-			VT240KeyDown(&vt, VT240_KEY_SELECT);
-			break;
-		case GLUT_KEY_INSERT:
-			VT240KeyDown(&vt, VT240_KEY_INSERT);
-			break;
-	}
-}
-
-void special_up_func(int key, int x, int y)
-{
-	switch(key) {
-#ifdef __EMSCRIPTEN__
-		case 111:
-			VT240KeyUp(&vt, VT240_KEY_REMOVE);
-			break;
-		case 120:
-			VT240KeyUp(&vt, DEL);
-			break;
-#endif
-		case GLUT_KEY_F1:
-			VT240KeyUp(&vt, VT240_KEY_HOLD_SCREEN);
-			break;
-		case GLUT_KEY_F2:
-			// VT240KeyUp(&vt, VT240_KEY_PRINT_SCREEN);
-			break;
-		case GLUT_KEY_F3:
-			VT240KeyUp(&vt, VT240_KEY_SET_UP);
-			break;
-		case GLUT_KEY_F4:
-			VT240KeyUp(&vt, VT240_KEY_SET_UP);
-			break;
-		case GLUT_KEY_F5:
-			// VT240KeyUp(&vt, VT240_KEY_BREAK);
-			break;
-		case GLUT_KEY_F6:
-			VT240KeyUp(&vt, VT240_KEY_F6);
-			break;
-		case GLUT_KEY_F7:
-			VT240KeyUp(&vt, VT240_KEY_F7);
-			break;
-		case GLUT_KEY_F8:
-			VT240KeyUp(&vt, VT240_KEY_F8);
-			break;
-		case GLUT_KEY_F9:
-			VT240KeyUp(&vt, VT240_KEY_F9);
-			break;
-		case GLUT_KEY_F10:
-			VT240KeyUp(&vt, VT240_KEY_F10);
-			break;
-		case GLUT_KEY_F11:
-			VT240KeyUp(&vt, VT240_KEY_F11);
-			break;
-		case GLUT_KEY_F12:
-			VT240KeyUp(&vt, VT240_KEY_F12);
-			break;
-		case GLUT_KEY_LEFT:
-			VT240KeyUp(&vt, VT240_KEY_LEFT);
-			break;
-		case GLUT_KEY_UP:
-			VT240KeyUp(&vt, VT240_KEY_UP);
-			break;
-		case GLUT_KEY_RIGHT:
-			VT240KeyUp(&vt, VT240_KEY_RIGHT);
-			break;
-		case GLUT_KEY_DOWN:
-			VT240KeyUp(&vt, VT240_KEY_DOWN);
-			break;
-		case GLUT_KEY_PAGE_UP:
-			VT240KeyUp(&vt, VT240_KEY_PREV_SCREEN);
-			break;
-		case GLUT_KEY_PAGE_DOWN:
-			VT240KeyUp(&vt, VT240_KEY_NEXT_SCREEN);
-			break;
-		case GLUT_KEY_HOME:
-			VT240KeyUp(&vt, VT240_KEY_FIND);
-			break;
-		case GLUT_KEY_END:
-			VT240KeyUp(&vt, VT240_KEY_SELECT);
-			break;
-		case GLUT_KEY_INSERT:
-			VT240KeyUp(&vt, VT240_KEY_INSERT);
-			break;
-	}
-}
-
 void display_func(void)
 {
 	GL_ERROR();
 	process();
 
-#ifdef __EMSCRIPTEN__
 	check_for_reshape();
-#endif
 
 	VTRender(&renderer, screen_width, screen_height);
 	GL_ERROR();
@@ -327,30 +141,6 @@ void display_func(void)
 
 int main(int argc, char** argv)
 {
-#ifdef __EMSCRIPTEN__
-	// hack to get ctrl-key work in a somewhat useful way
-	EM_ASM(
-		let __old_getASCIIKey = GLUT.getASCIIKey;
-		GLUT.getASCIIKey = function(e) {
-			if(e.ctrlKey) {
-				let evt = {};
-				evt.ctrlKey = false;
-				evt.altKey = false;
-				evt.metaKey = false;
-				evt.shiftKey = e.shiftKey;
-				evt.keyCode = e.keyCode;
-				let result = __old_getASCIIKey(evt);
-				if(result != null && result >= 97 && result <= 122) {
-					return result - 96;
-				} else {
-					return null;
-				}
-			} else {
-				return __old_getASCIIKey(e);
-			}
-		};
-	);
-#endif
 	glutInit(&argc, argv);
 	// glutInitContextVersion(4, 6);
 	// glutInitContextProfile(GLUT_CORE_PROFILE);
@@ -386,13 +176,6 @@ int main(int argc, char** argv)
 	glutReshapeFunc(reshape_func);
 	glutDisplayFunc(display_func);
 	glutIdleFunc(display_func);
-
-	glutKeyboardFunc(kb_func);
-	glutKeyboardUpFunc(kb_up_func);
-	glutSpecialFunc(special_func);
-	glutSpecialUpFunc(special_up_func);
-
-	//glutIgnoreKeyRepeat(1);
 
 	VT240Init(&vt);
 	vt.rx = SYSReceive;
