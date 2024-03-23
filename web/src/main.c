@@ -84,12 +84,41 @@ static void check_for_reshape()
 }
 #endif
 
+__attribute__((weak))
+void SYSReceive(unsigned char c)
+{
+	// ignore XON/XOFF
+	if(c == DC1 || c == DC3) {
+		return;
+	}
+
+	VT240Receive(&vt, c);
+}
+
+__attribute__((weak))
+void SYSInit(void)
+{
+	// empty
+}
+
+__attribute__((weak))
+void SYSProcess(unsigned long dt)
+{
+	// empty
+}
+
+void SYSSend(unsigned char c)
+{
+	VT240Receive(&vt, c);
+}
+
 void process(void)
 {
 	unsigned long now = glutGet(GLUT_ELAPSED_TIME);
 
 	unsigned long dt = now - current_time;
 
+	SYSProcess(dt);
 	VT240Process(&vt, dt);
 	VTProcess(&renderer, dt);
 
@@ -281,16 +310,6 @@ void special_up_func(int key, int x, int y)
 	}
 }
 
-void print_ch(unsigned char c)
-{
-	// ignore XON/XOFF
-	if(c == DC1 || c == DC3) {
-		return;
-	}
-
-	VT240Receive(&vt, c);
-}
-
 void display_func(void)
 {
 	GL_ERROR();
@@ -376,7 +395,7 @@ int main(int argc, char** argv)
 	//glutIgnoreKeyRepeat(1);
 
 	VT240Init(&vt);
-	vt.rx = print_ch;
+	vt.rx = SYSReceive;
 
 	VTInitRenderer(&renderer, &vt);
 	VTEnableGlow(&renderer, enable_glow);
@@ -389,6 +408,8 @@ int main(int argc, char** argv)
 	glClearColor(0.0, 0.0, 0.0, 0.0);
 
 	GL_ERROR();
+
+	SYSInit();
 
 	// glutSetCursor(GLUT_CURSOR_NONE);
 
