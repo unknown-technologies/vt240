@@ -1,4 +1,8 @@
+.*
 *.sw?
 build
 vt240
 web/build
+
+!.editorconfig
+!.gitignore
