@@ -125,7 +125,7 @@ u16 VT240TranslateKey(VT240* vt, int key)
 		case GLFW_KEY_DELETE:
 			return VT240_KEY_REMOVE;
 		case GLFW_KEY_BACKSPACE:
-			return DEL;
+			return ctrl ? CAN : DEL;
 		case GLFW_KEY_TAB:
 			return HT;
 		case GLFW_KEY_ESCAPE:
@@ -286,6 +286,14 @@ void VT240KeyboardKeyDownHost(VT240* vt, int key)
 					vt->repeat_char = 0;
 
 					VT240ProcessKey(vt, 0);
+				} else if(key == GLFW_KEY_BACKSPACE) {
+					vt->repeat_time = 0;
+					vt->repeat_state = 0;
+
+					vt->repeat_scancode = key;
+					vt->repeat_char = CAN;
+
+					VT240ProcessKey(vt, CAN);
 				}
 			} else {
 				u16 code = VT240TranslateKey(vt, key);
