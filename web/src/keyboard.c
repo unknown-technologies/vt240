@@ -65,16 +65,16 @@ static const KeyMapEntry VT240KeyMap[] = {
 	{.code = "F10",	.vtKey = VT240_KEY_F20,			.modifiers = KEY_MODIFIER_ALT},
 
 	// NumPad
-	{.code = "NumPad0",		.vtKey = VT240_KEY_KP_0},
-	{.code = "NumPad1",		.vtKey = VT240_KEY_KP_1},
-	{.code = "NumPad2",		.vtKey = VT240_KEY_KP_2},
-	{.code = "NumPad3",		.vtKey = VT240_KEY_KP_3},
-	{.code = "NumPad4",		.vtKey = VT240_KEY_KP_4},
-	{.code = "NumPad5",		.vtKey = VT240_KEY_KP_5},
-	{.code = "NumPad6",		.vtKey = VT240_KEY_KP_6},
-	{.code = "NumPad7",		.vtKey = VT240_KEY_KP_7},
-	{.code = "NumPad8",		.vtKey = VT240_KEY_KP_8},
-	{.code = "NumPad9",		.vtKey = VT240_KEY_KP_9},
+	{.code = "Numpad0",		.vtKey = VT240_KEY_KP_0},
+	{.code = "Numpad1",		.vtKey = VT240_KEY_KP_1},
+	{.code = "Numpad2",		.vtKey = VT240_KEY_KP_2},
+	{.code = "Numpad3",		.vtKey = VT240_KEY_KP_3},
+	{.code = "Numpad4",		.vtKey = VT240_KEY_KP_4},
+	{.code = "Numpad5",		.vtKey = VT240_KEY_KP_5},
+	{.code = "Numpad6",		.vtKey = VT240_KEY_KP_6},
+	{.code = "Numpad7",		.vtKey = VT240_KEY_KP_7},
+	{.code = "Numpad8",		.vtKey = VT240_KEY_KP_8},
+	{.code = "Numpad9",		.vtKey = VT240_KEY_KP_9},
 	{.code = "NumpadEnter",		.vtKey = VT240_KEY_KP_ENTER},
 	{.code = "NumpadAdd",		.vtKey = VT240_KEY_KP_MINUS},
 	{.code = "NumpadSubtract", 	.vtKey = VT240_KEY_KP_PF4},
@@ -176,9 +176,9 @@ static EM_BOOL handleKeyboardInput(int event_type, const EmscriptenKeyboardEvent
 			VT240ProcessKey(vt, utf8_value);
 		}
 	} else {
-		#ifndef NDEBUG
+#ifndef NDEBUG
 		printf("Found unmapped key, key: '%s', code: '%s', bitmask: '%x'\n", e->key, e->code, getModifierBitmask(e));
-		#endif
+#endif
 	}
 
 	return EM_TRUE;
