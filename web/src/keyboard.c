@@ -1,7 +1,8 @@
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
-#include <math.h>
+
+#ifndef NDEBUG
+#include <stdio.h>
+#endif
 
 #include <emscripten/html5.h>
 #include <emscripten/key_codes.h>
@@ -16,13 +17,13 @@
 #define KEY_MODIFIER_META	0x08
 #define KEY_MODIFIER_SHIFT	0x10
 
-struct KeyMapEntry {
-	char* code;
-	u16 vtKey;
-	u8 modifiers;
-};
+typedef struct {
+	const char*	code;
+	u16		vtKey;
+	u8		modifiers;
+} KeyMapEntry;
 
-static const struct KeyMapEntry VT240KeyMap[] = {
+static const KeyMapEntry VT240KeyMap[] = {
 	{.code = "Backspace",	.vtKey = DEL},
 	{.code = "Enter",	.vtKey = CR,	.modifiers = KEY_MODIFIER_NONE},
 	{.code = "Escape",	.vtKey = ESC},
@@ -81,9 +82,10 @@ static const struct KeyMapEntry VT240KeyMap[] = {
 	{.code = "NumpadDecimal", 	.vtKey = VT240_KEY_KP_PERIOD},
 	{.code = "NumLock", 		.vtKey = VT240_KEY_KP_PF1},
 };
-static const int VT240KeyMapLength = sizeof(VT240KeyMap) / sizeof(struct KeyMapEntry);
+static const int VT240KeyMapLength = sizeof(VT240KeyMap) / sizeof(KeyMapEntry);
 
-u8 getModifierBitmask(const EmscriptenKeyboardEvent *e) {
+static u8 getModifierBitmask(const EmscriptenKeyboardEvent *e)
+{
 	if(e->ctrlKey || e->altKey || e->metaKey || e->shiftKey) {
 		return (u8) (
 			(e->ctrlKey << 1) |
@@ -96,15 +98,15 @@ u8 getModifierBitmask(const EmscriptenKeyboardEvent *e) {
 	return KEY_MODIFIER_NONE;
 }
 
-EM_BOOL handleKeyboardInput(int eventType, const EmscriptenKeyboardEvent *e, void* userData)
+static EM_BOOL handleKeyboardInput(int event_type, const EmscriptenKeyboardEvent *e, void* user_data)
 {
-	VT240* vt = (VT240*) userData;
+	VT240* vt = (VT240*) user_data;
 
 	if(e->repeat && !(vt->mode & DECARM)) {
 		return EM_TRUE;
 	}
 
-	const struct KeyMapEntry* mappedKey = NULL;
+	const KeyMapEntry* mapped_key = NULL;
 
 	for(int i = 0; i < VT240KeyMapLength; i++) {
 		if(
@@ -113,15 +115,14 @@ EM_BOOL handleKeyboardInput(int eventType, const EmscriptenKeyboardEvent *e, voi
 				(VT240KeyMap[i].modifiers == getModifierBitmask(e))
 			)
 		) {
-			mappedKey = &VT240KeyMap[i];
+			mapped_key = &VT240KeyMap[i];
 			break;
 		}
 	}
 
-	if(mappedKey != NULL) {
-		VT240ProcessKey(vt, mappedKey->vtKey);
-	}
-	else if(strlen(e->key) == 1 && e->key[0] >= 0x20) {
+	if(mapped_key != NULL) {
+		VT240ProcessKey(vt, mapped_key->vtKey);
+	} else if(strlen(e->key) == 1 && e->key[0] >= 0x20) {
 		if (e->ctrlKey) {
 			if(e->key[0] >= 'A' && e->key[0] <= 'Z') {
 				VT240ProcessKey(vt, e->key[0] - 0x40);
@@ -131,18 +132,26 @@ EM_BOOL handleKeyboardInput(int eventType, const EmscriptenKeyboardEvent *e, voi
 		} else {
 			VT240ProcessKey(vt, e->key[0]);
 		}
-	}
-	else if(strlen(e->key) == 2) {
+	} else if(strlen(e->key) == 2) {
 		u16 upper = (u16) (e->key[0] & 0x1F);
 		u16 lower = (u16) (e->key[1] & 0x3F);
-		u16 utf8Value = (upper << 6) + lower;
+		u16 utf8_value = (upper << 6) + lower;
 
-		switch(utf8Value) {
+		switch(utf8_value) {
 			case 0xA4:
-				utf8Value = 0xA8;
+				utf8_value = 0xA8;
+				break;
+			case 0x0152:
+				utf8_value = 0xD7;
+				break;
+			case 0x0178:
+				utf8_value = 0xDD;
+				break;
+			case 0x0153:
+				utf8_value = 0xF7;
 				break;
 			case 0xFF:
-				utf8Value = 0xFD;
+				utf8_value = 0xFD;
 				break;
 			case 0xA6:
 			case 0xAC:
@@ -156,17 +165,19 @@ EM_BOOL handleKeyboardInput(int eventType, const EmscriptenKeyboardEvent *e, voi
 			case 0xDE:
 			case 0xF0:
 			case 0xFE:
-				utf8Value = 0;
+				utf8_value = 0;
 				break;
 			default:
 				break;
 		}
 
-		if(utf8Value > 0xA0 && utf8Value < 0xFF) {
-			VT240ProcessKey(vt, utf8Value);
+		if(utf8_value > 0xA0 && utf8_value < 0xFF) {
+			VT240ProcessKey(vt, utf8_value);
 		}
 	} else {
+		#ifndef NDEBUG
 		printf("Found unmapped key, key: '%s', code: '%s', bitmask: '%x'\n", e->key, e->code, getModifierBitmask(e));
+		#endif
 	}
 
 	return EM_TRUE;
