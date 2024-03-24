@@ -74,6 +74,7 @@ void VT240Init(VT240* vt)
 	vt->bell = NULL;
 	vt->keyclick = NULL;
 	vt->rx = NULL;
+	vt->brk = NULL;
 
 	/* configure setup screens */
 	vt->in_setup = 0;
@@ -3628,20 +3629,12 @@ void VT240ProcessKeyVT100(VT240* vt, u16 key)
 			}
 			VT240SendInput(vt, 'D');
 			break;
-		case VT240_KEY_HOLD_SCREEN:
-		case VT240_KEY_PRINT_SCREEN:
-			break;
 		case VT240_KEY_SET_UP:
 			if(vt->in_setup) {
 				VT240LeaveSetup(vt);
 			} else {
 				VT240EnterSetup(vt);
 			}
-			break;
-		case VT240_KEY_DATA_TALK:
-		case VT240_KEY_BREAK:
-			/* local function keys */
-			/* TODO: implement */
 			break;
 		case VT240_KEY_F6:
 		case VT240_KEY_F7:
@@ -4035,8 +4028,12 @@ void VT240ProcessKey(VT240* vt, u16 key)
 		case VT240_KEY_HOLD_SCREEN:
 		case VT240_KEY_PRINT_SCREEN:
 		case VT240_KEY_DATA_TALK:
-		case VT240_KEY_BREAK:
 			/* TODO: implement */
+			return;
+		case VT240_KEY_BREAK:
+			if(vt->brk) {
+				vt->brk();
+			}
 			return;
 	}
 

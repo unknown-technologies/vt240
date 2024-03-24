@@ -323,6 +323,7 @@ typedef struct {
 	void		(*bell)(void);
 	void		(*keyclick)(void);
 	void		(*rx)(unsigned char);
+	void		(*brk)(void);
 	void		(*resize)(unsigned int width, unsigned int height);
 } VT240;
 
