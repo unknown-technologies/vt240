@@ -91,6 +91,12 @@ void SYSReceive(unsigned char c)
 }
 
 __attribute__((weak))
+void SYSBreak(void)
+{
+	// empty
+}
+
+__attribute__((weak))
 void SYSInit(void)
 {
 	// empty
@@ -179,6 +185,7 @@ int main(int argc, char** argv)
 
 	VT240Init(&vt);
 	vt.rx = SYSReceive;
+	vt.brk = SYSBreak;
 
 	VTInitRenderer(&renderer, &vt);
 	VTEnableGlow(&renderer, enable_glow);
