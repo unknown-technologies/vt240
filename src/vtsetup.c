@@ -474,7 +474,7 @@ void VT240SetupShowGeneral(VT240* vt)
 	/* line 3 */
 	VT240SetupGoto(vt, 6, 1);
 	VT240SetupEraseLine(vt);
-	if(vt->mode & KAM) {
+	if(vt->mode & DECKPAM) {
 		VT240SetupWriteString(vt, " Application Keypad ", GET_SGR(2, 0));
 	} else {
 		VT240SetupWriteString(vt, " Numeric Keypad     ", GET_SGR(2, 0));
@@ -1128,7 +1128,7 @@ void VT240SetupGeneralEnter(VT240* vt)
 		case 2:
 			switch(vt->setup.cursor_x) {
 				case 0: /* Keypad */
-					vt->mode ^= KAM;
+					vt->mode ^= DECKPAM;
 					VT240SetupShowScreen(vt);
 					break;
 				case 1: /* Cursor keys */
