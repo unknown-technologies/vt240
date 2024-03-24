@@ -25,6 +25,7 @@ typedef struct {
 
 static const KeyMapEntry VT240KeyMap[] = {
 	{.code = "Backspace",	.vtKey = DEL},
+	{.code = "Backspace",	.vtKey = CAN,	.modifiers = KEY_MODIFIER_CTRL},
 	{.code = "Enter",	.vtKey = CR,	.modifiers = KEY_MODIFIER_NONE},
 	{.code = "Escape",	.vtKey = ESC},
 	{.code = "Tab",		.vtKey = HT},
