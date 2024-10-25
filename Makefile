@@ -25,7 +25,8 @@ ifdef NDEBUG
 DEBUG		:=	-DNDEBUG
 ASAN		:=	0
 else
-DEBUG		:=	1
+DEBUG		:=	-DDEBUG
+ASAN		:=	1
 endif
 
 ifeq ($(ASAN),1)
@@ -42,7 +43,7 @@ CFLAGS		:=	$(OPT) -Wall -std=gnu99 \
 			$(DEBUG) $(ASANFLG)
 
 LIBS		:=	-lGL -lglfw
-LDFLAGS		:=	-Wl,-x -Wl,--gc-sections $(LIBS) $(OPT) $(ASANFLG)
+LDFLAGS		:=	-Wl,-x -Wl,--gc-sections $(OPT) $(ASANFLG)
 
 CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 GLSLFILES	:=	$(foreach dir,$(GLSLSOURCES),$(notdir $(wildcard $(dir)/*.glsl)))
@@ -94,7 +95,7 @@ $(OUTPUT): $(TARGET).elf
 
 $(TARGET).elf: $(OFILES)
 	@echo "[LD]    $(notdir $@)"
-	@$(LD) $(LDFLAGS) $(OFILES) -o $@ -Wl,-Map=$(@:.elf=.map)
+	@$(LD) $(LDFLAGS) $(OFILES) $(LIBS) -o $@ -Wl,-Map=$(@:.elf=.map)
 
 -include $(DEPSDIR)/*.d
 
