@@ -19,13 +19,19 @@ SOURCES		:=	src
 GLSLSOURCES	:=	glsl
 BUILD		:=	build
 
-ASAN		:=	#-fsanitize=address
 OPT		:=	-O3 -g
 
 ifdef NDEBUG
 DEBUG		:=	-DNDEBUG
+ASAN		:=	0
 else
-DEBUG		:=
+DEBUG		:=	1
+endif
+
+ifeq ($(ASAN),1)
+ASANFLG		:=	-fsanitize=address
+else
+ASANFLG		:=
 endif
 
 CFLAGS		:=	$(OPT) -Wall -std=gnu99 \
@@ -33,10 +39,10 @@ CFLAGS		:=	$(OPT) -Wall -std=gnu99 \
 			$(INCLUDE) -DUNIX \
 			-D_XOPEN_SOURCE=600 -D_DEFAULT_SOURCE \
 			-DGL_GLEXT_PROTOTYPES -DVT240_NO_BUFFER \
-			$(DEBUG) $(ASAN)
+			$(DEBUG) $(ASANFLG)
 
 LIBS		:=	-lGL -lglfw
-LDFLAGS		:=	-Wl,-x -Wl,--gc-sections $(LIBS) $(OPT) $(ASAN)
+LDFLAGS		:=	-Wl,-x -Wl,--gc-sections $(LIBS) $(OPT) $(ASANFLG)
 
 CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 GLSLFILES	:=	$(foreach dir,$(GLSLSOURCES),$(notdir $(wildcard $(dir)/*.glsl)))
