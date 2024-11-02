@@ -230,6 +230,7 @@ static void enter_fullscreen(void)
 		glfwGetMonitorPos(mon, &pos_x, &pos_y);
 		const GLFWvidmode* mode = glfwGetVideoMode(mon);
 
+		glfwSetWindowAttrib(window, GLFW_RESIZABLE, GLFW_FALSE);
 		glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
 		glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_TRUE);
 
@@ -244,6 +245,7 @@ static void exit_fullscreen(void)
 {
 	glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
 	glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_FALSE);
+	glfwSetWindowAttrib(window, GLFW_RESIZABLE, GLFW_TRUE);
 
 	glfwSetWindowSize(window, SCREEN_WIDTH, SCREEN_HEIGHT);
 	glfwSetWindowPos(window, window_pos_x, window_pos_y);
