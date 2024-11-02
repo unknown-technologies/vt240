@@ -56,6 +56,7 @@ void VT240Init(VT240* vt)
 {
 	vt->cursor_time = 0;
 	vt->config = default_config;
+	vt->screen_color = VT240_SCREEN_COLOR_GREEN;
 
 	vt->columns = TEXT_WIDTH;
 	vt->lines = TEXT_HEIGHT;
@@ -4045,5 +4046,12 @@ void VT240ProcessKey(VT240* vt, u16 key)
 		}
 	} else {
 		VT240ProcessKeyVT52(vt, key);
+	}
+}
+
+void VT240SetScreenColor(VT240* vt, unsigned int color)
+{
+	if(color < 3) {
+		vt->screen_color = color;
 	}
 }

@@ -353,7 +353,19 @@ static void pty_resize(unsigned int width, unsigned int height)
 
 static void print_usage(const char* self)
 {
-	printf("Usage: %s [-g] [-l | -s command | -t hostname port]\n", self);
+	printf("Usage: %s [OPTIONS] [-l | -s command | -t hostname port]\n"
+		"\n"
+		"OPTIONS\n"
+		"  -h            Show this help message\n"
+		"  -g            Disable glow effect\n"
+		"  -cg           Screen color: green\n"
+		"  -cw           Screen color: white\n"
+		"  -ca           Screen color: amber\n"
+		"  -l            Loopback / local mode\n"
+		"  -s /bin/sh    Execute /bin/sh in the terminal\n"
+		"  -t host port  Establish TELNET connection to host:port\n"
+		"\n"
+		"If no option is provided, -s $(getent passwd $UID | cut -d: -f7) is assumed.\n", self);
 }
 
 char** get_default_argv(void)
@@ -395,6 +407,8 @@ int main(int argc, char** argv, char** envp)
 	int port;
 	bool loopback = false;
 
+	unsigned int color = VT240_SCREEN_COLOR_GREEN;
+
 	argc--;
 	argv++;
 	for(int i = 0; i < argc; i++) {
@@ -422,6 +436,15 @@ int main(int argc, char** argv, char** envp)
 			break;
 		} else if(!strcmp(arg, "-l")) {
 			loopback = true;
+			break;
+		} else if(!strcmp(arg, "-cw")) {
+			color = VT240_SCREEN_COLOR_WHITE;
+			break;
+		} else if(!strcmp(arg, "-cg")) {
+			color = VT240_SCREEN_COLOR_GREEN;
+			break;
+		} else if(!strcmp(arg, "-ca")) {
+			color = VT240_SCREEN_COLOR_AMBER;
 			break;
 		} else if(!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
 			print_usage(self);
@@ -492,6 +515,7 @@ int main(int argc, char** argv, char** envp)
 	GL_ERROR();
 
 	VT240Init(&vt);
+	VT240SetScreenColor(&vt, color);
 	vt.rx = print_ch;
 
 	VTInitRenderer(&renderer, &vt);

@@ -3,8 +3,9 @@
 
 #include <GL/gl.h>
 
-#define	VT240_TEXT_GREEN
-#define	VT240_ALTERNATE_INTENSITY
+#define	VT240_SCREEN_COLOR_GREEN		0
+#define	VT240_SCREEN_COLOR_WHITE		1
+#define	VT240_SCREEN_COLOR_AMBER		2
 
 #define	VT240_KEY_HOLD_SCREEN			301
 #define	VT240_KEY_PRINT_SCREEN			302
@@ -314,6 +315,7 @@ typedef struct {
 
 	/* configuration */
 	VT240NVR	config;
+	unsigned int	screen_color;
 
 	/* setup screens  */
 	int		in_setup;
@@ -444,6 +446,7 @@ void VT240Receive(VT240* vt, unsigned char c);
 void VT240ReceiveText(VT240* vt, const char* s);
 void VT240SetTextureFilter(VT240* vt, bool linear);
 void VT240Draw(VT240* vt);
+void VT240SetScreenColor(VT240* vt, unsigned int color);
 
 /* private functions */
 void VT240Write(VT240* vt, u16 c);

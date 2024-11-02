@@ -31,33 +31,20 @@
 #define	BLINK_ON_TIME		1.8f
 #define	BLINK_TIME		(BLINK_OFF_TIME + BLINK_ON_TIME)
 
-#ifdef VT240_TEXT_BLUISH
-#define	FGCOLOR_R		0.0f
-#define	FGCOLOR_G		0.964706f
-#define	FGCOLOR_B		0.752941f
-#endif
+/* monochrome green */
+#define	FGCOLOR_R_G	0.25f
+#define	FGCOLOR_G_G	1.00f
+#define	FGCOLOR_B_G	0.25f
 
-#ifdef VT240_TEXT_WHITE
-#define	FGCOLOR_R		1
-#define	FGCOLOR_G		1
-#define	FGCOLOR_B		1
-#endif
+/* monochrome white */
+#define	FGCOLOR_R_W	1.00f
+#define	FGCOLOR_G_W	1.00f
+#define	FGCOLOR_B_W	1.00f
 
-#ifdef VT240_TEXT_GREEN
-#define	FGCOLOR_R		0.25f
-#define	FGCOLOR_G		1
-#define	FGCOLOR_B		0.25f
-#endif
-
-#ifndef FGCOLOR_R
-#define	FGCOLOR_R		1
-#endif
-#ifndef FGCOLOR_G
-#define	FGCOLOR_G		1
-#endif
-#ifndef FGCOLOR_B
-#define	FGCOLOR_B		1
-#endif
+/* monochrome amber */
+#define	FGCOLOR_R_A	1.00f
+#define	FGCOLOR_G_A	0.658824f
+#define	FGCOLOR_B_A	0.00f
 
 extern const char vt240_vert[];
 extern const char vt240_frag[];
@@ -87,19 +74,24 @@ static const float quad_vertices[] = {
 
 #define	QUAD_VTX_CNT	(sizeof(quad_vertices) / (sizeof(*quad_vertices) * 3))
 
-static const GLfloat vt240_colors[8][3] = {
-	/* monochrome */
-#ifndef VT240_ALTERNATE_INTENSITY
-	/* color 0: black  */ { 0.0f / 3.0f, 0.0f / 3.0f, 0.0f / 3.0f },
-	/* color 1: gray 1 */ { 1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f },
-	/* color 2: gray 2 */ { 2.0f / 3.0f, 2.0f / 3.0f, 2.0f / 3.0f },
-	/* color 3: white  */ { 3.0f / 3.0f, 3.0f / 3.0f, 3.0f / 3.0f },
-#else
-	/* color 0: black  */ { FGCOLOR_R * 0.00f, FGCOLOR_G * 0.00f, FGCOLOR_B * 0.00f },
-	/* color 1: gray 1 */ { FGCOLOR_R * 0.30f, FGCOLOR_G * 0.30f, FGCOLOR_B * 0.30f },
-	/* color 2: gray 2 */ { FGCOLOR_R * 0.50f, FGCOLOR_G * 0.50f, FGCOLOR_B * 0.50f },
-	/* color 3: white  */ { FGCOLOR_R * 1.00f, FGCOLOR_G * 1.00f, FGCOLOR_B * 1.00f },
-#endif
+static const GLfloat vt240_colors[16][3] = {
+	/* monochrome: green */
+	/* color 0: black  */ { FGCOLOR_R_G * 0.00f, FGCOLOR_G_G * 0.00f, FGCOLOR_B_G * 0.00f },
+	/* color 1: gray 1 */ { FGCOLOR_R_G * 0.30f, FGCOLOR_G_G * 0.30f, FGCOLOR_B_G * 0.30f },
+	/* color 2: gray 2 */ { FGCOLOR_R_G * 0.50f, FGCOLOR_G_G * 0.50f, FGCOLOR_B_G * 0.50f },
+	/* color 3: white  */ { FGCOLOR_R_G * 1.00f, FGCOLOR_G_G * 1.00f, FGCOLOR_B_G * 1.00f },
+
+	/* monochrome: white */
+	/* color 0: black  */ { FGCOLOR_R_W * 0.00f, FGCOLOR_G_W * 0.00f, FGCOLOR_B_W * 0.00f },
+	/* color 1: gray 1 */ { FGCOLOR_R_W * 0.30f, FGCOLOR_G_W * 0.30f, FGCOLOR_B_W * 0.30f },
+	/* color 2: gray 2 */ { FGCOLOR_R_W * 0.50f, FGCOLOR_G_W * 0.50f, FGCOLOR_B_W * 0.50f },
+	/* color 3: white  */ { FGCOLOR_R_W * 1.00f, FGCOLOR_G_W * 1.00f, FGCOLOR_B_W * 1.00f },
+
+	/* monochrome: amber */
+	/* color 0: black  */ { FGCOLOR_R_A * 0.00f, FGCOLOR_G_A * 0.00f, FGCOLOR_B_A * 0.00f },
+	/* color 1: gray 1 */ { FGCOLOR_R_A * 0.30f, FGCOLOR_G_A * 0.30f, FGCOLOR_B_A * 0.30f },
+	/* color 2: gray 2 */ { FGCOLOR_R_A * 0.50f, FGCOLOR_G_A * 0.50f, FGCOLOR_B_A * 0.50f },
+	/* color 3: white  */ { FGCOLOR_R_A * 1.00f, FGCOLOR_G_A * 1.00f, FGCOLOR_B_A * 1.00f },
 
 	/* color */
 	/* color 0: black  */ { 0.0f, 0.0f, 0.0f },
@@ -251,9 +243,9 @@ void VTRenderTerminal(VTRenderer* self)
 	glUniform1ui(self->vt_shader_block_cursor, self->vt->config.cursor_style == VT240_CURSOR_STYLE_BLOCK_CURSOR);
 
 	if(self->vt->config.display == VT240_DISPLAY_MONOCHROME) {
-		glUniform3fv(self->vt_shader_colorscheme, 4, (GLfloat*) vt240_colors);
+		glUniform3fv(self->vt_shader_colorscheme, 4, (GLfloat*) vt240_colors[4 * self->vt->screen_color]);
 	} else {
-		glUniform3fv(self->vt_shader_colorscheme, 4, (GLfloat*) &vt240_colors[4]);
+		glUniform3fv(self->vt_shader_colorscheme, 4, (GLfloat*) &vt240_colors[12]);
 	}
 
 	glBindVertexArray(self->quad_vao);
