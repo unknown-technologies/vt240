@@ -133,6 +133,9 @@ void VTInitRenderer(VTRenderer* self, VT240* vt)
 	self->post_shader_fbtex = glGetUniformLocation(self->post_shader, "vt240_screen");
 	self->post_shader_blurtex = glGetUniformLocation(self->post_shader, "blur_texture");
 	self->post_shader_enableglow = glGetUniformLocation(self->post_shader, "enable_glow");
+	self->post_shader_raw = glGetUniformLocation(self->post_shader, "raw_mode");
+	self->post_shader_focus = glGetUniformLocation(self->post_shader, "focus");
+	self->post_shader_intensity = glGetUniformLocation(self->post_shader, "brightness");
 	GL_ERROR();
 
 	VTCreateBuffers(self);
@@ -147,6 +150,21 @@ void VTInitRenderer(VTRenderer* self, VT240* vt)
 void VTEnableGlow(VTRenderer* self, bool enabled)
 {
 	self->enable_glow = enabled;
+}
+
+void VTSetRaw(VTRenderer* self, bool raw)
+{
+	self->raw = raw;
+}
+
+void VTSetFocus(VTRenderer* self, float focus)
+{
+	self->focus = focus;
+}
+
+void VTSetIntensity(VTRenderer* self, float intensity)
+{
+	self->intensity = intensity;
 }
 
 void VTProcess(VTRenderer* self, unsigned long dt)
@@ -182,6 +200,9 @@ void VTRender(VTRenderer* self, unsigned int width, unsigned int height)
 	glUniform1i(self->post_shader_blurtex, 1);
 
 	glUniform1i(self->post_shader_enableglow, self->enable_glow);
+	glUniform1i(self->post_shader_raw, self->raw);
+	glUniform1f(self->post_shader_focus, self->focus);
+	glUniform1f(self->post_shader_intensity, self->intensity);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

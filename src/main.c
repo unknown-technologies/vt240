@@ -361,6 +361,9 @@ static void print_usage(const char* self)
 		"  -cg           Screen color: green\n"
 		"  -cw           Screen color: white\n"
 		"  -ca           Screen color: amber\n"
+		"  -f 0.75       Electron beam focus\n"
+		"  -i 1.0        Electron beam intensity (brightness)\n"
+		"  -r            Raw mode, deactivates all post processing; implies -g\n"
 		"  -l            Loopback / local mode\n"
 		"  -s /bin/sh    Execute /bin/sh in the terminal\n"
 		"  -t host port  Establish TELNET connection to host:port\n"
@@ -406,6 +409,9 @@ int main(int argc, char** argv, char** envp)
 	const char* hostname = NULL;
 	int port;
 	bool loopback = false;
+	float focus = 0.75f;
+	float intensity = 1.0f;
+	bool rawmode = false;
 
 	unsigned int color = VT240_SCREEN_COLOR_GREEN;
 
@@ -433,22 +439,36 @@ int main(int argc, char** argv, char** envp)
 				port = atoi(argv[i + 2]);
 				i += 2;
 			}
-			break;
 		} else if(!strcmp(arg, "-l")) {
 			loopback = true;
-			break;
 		} else if(!strcmp(arg, "-cw")) {
 			color = VT240_SCREEN_COLOR_WHITE;
-			break;
 		} else if(!strcmp(arg, "-cg")) {
 			color = VT240_SCREEN_COLOR_GREEN;
-			break;
 		} else if(!strcmp(arg, "-ca")) {
 			color = VT240_SCREEN_COLOR_AMBER;
-			break;
 		} else if(!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
 			print_usage(self);
 			return 0;
+		} else if(!strcmp(arg, "-f")) {
+			if(i + 1 >= argc) {
+				print_usage(self);
+				return 1;
+			} else {
+				focus = atof(argv[i + 1]);
+				i += 1;
+			}
+		} else if(!strcmp(arg, "-i")) {
+			if(i + 1 >= argc) {
+				print_usage(self);
+				return 1;
+			} else {
+				intensity = atof(argv[i + 1]);
+				i += 1;
+			}
+		} else if(!strcmp(arg, "-r")) {
+			rawmode = true;
+			enable_glow = false;
 		} else {
 			if(i + 2 > argc) {
 				print_usage(self);
@@ -520,6 +540,9 @@ int main(int argc, char** argv, char** envp)
 
 	VTInitRenderer(&renderer, &vt);
 	VTEnableGlow(&renderer, enable_glow);
+	VTSetRaw(&renderer, rawmode);
+	VTSetFocus(&renderer, focus);
+	VTSetIntensity(&renderer, intensity);
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

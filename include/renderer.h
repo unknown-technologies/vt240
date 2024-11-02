@@ -48,14 +48,23 @@ typedef struct {
 	GLuint		post_shader_fbtex;
 	GLuint		post_shader_blurtex;
 	GLuint		post_shader_enableglow;
+	GLuint		post_shader_raw;
+	GLuint		post_shader_focus;
+	GLuint		post_shader_intensity;
 
 	unsigned long	blink_time;
 
 	bool		enable_glow;
+	bool		raw;
+	float		focus;
+	float		intensity;
 } VTRenderer;
 
 void	VTInitRenderer(VTRenderer* renderer, VT240* vt);
 void	VTEnableGlow(VTRenderer* self, bool enabled);
+void	VTSetRaw(VTRenderer* vt, bool raw);
+void	VTSetFocus(VTRenderer* vt, float color);
+void	VTSetIntensity(VTRenderer* vt, float intensity);
 void	VTProcess(VTRenderer* self, unsigned long dt);
 void	VTRender(VTRenderer* self, unsigned int width, unsigned int height);
 
