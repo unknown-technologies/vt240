@@ -258,6 +258,8 @@ static void toggle_fullscreen(void)
 	} else {
 		enter_fullscreen();
 	}
+
+	glfwSwapInterval(1);
 }
 
 void key_handler(GLFWwindow* window, int key, int scancode, int action, int mods)
