@@ -103,9 +103,9 @@ static const GLfloat vt240_colors[8][3] = {
 
 	/* color */
 	/* color 0: black  */ { 0.0f, 0.0f, 0.0f },
-	/* color 1: red    */ { 1.0f, 0.0f, 0.0f },
-	/* color 2: green  */ { 0.0f, 1.0f, 0.0f },
-	/* color 3: blue   */ { 0.0f, 1.0f, 1.0f },
+	/* color 1: blue   */ { 0.0f, 0.0f, 0.6f },
+	/* color 2: red    */ { 0.6f, 0.0f, 0.0f },
+	/* color 3: green  */ { 0.0f, 0.5f, 0.0f },
 };
 
 void VTInitRenderer(VTRenderer* self, VT240* vt)
@@ -250,7 +250,11 @@ void VTRenderTerminal(VTRenderer* self)
 	glUniform1ui(self->vt_shader_in_setup, self->vt->in_setup);
 	glUniform1ui(self->vt_shader_block_cursor, self->vt->config.cursor_style == VT240_CURSOR_STYLE_BLOCK_CURSOR);
 
-	glUniform3fv(self->vt_shader_colorscheme, 8, (GLfloat*) vt240_colors);
+	if(self->vt->config.display == VT240_DISPLAY_MONOCHROME) {
+		glUniform3fv(self->vt_shader_colorscheme, 4, (GLfloat*) vt240_colors);
+	} else {
+		glUniform3fv(self->vt_shader_colorscheme, 4, (GLfloat*) &vt240_colors[4]);
+	}
 
 	glBindVertexArray(self->quad_vao);
 	glDrawArrays(GL_TRIANGLES, 0, QUAD_VTX_CNT);

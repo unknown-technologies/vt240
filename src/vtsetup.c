@@ -1038,6 +1038,15 @@ void VT240SetupDisplayEnter(VT240* vt)
 					vt->mode ^= DECSCNM;
 					VT240SetupShowScreen(vt);
 					break;
+				case 3: /* monochrome vs color */
+					if(vt->config.display == VT240_DISPLAY_MONOCHROME) {
+						vt->config.display = VT240_DISPLAY_COLOR;
+					} else if(vt->config.display == VT240_DISPLAY_COLOR) {
+						vt->config.display = VT240_DISPLAY_BOTH;
+					} else {
+						vt->config.display = VT240_DISPLAY_MONOCHROME;
+					}
+					break;
 			}
 			break;
 		case 2:
