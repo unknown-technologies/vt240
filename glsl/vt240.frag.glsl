@@ -105,6 +105,7 @@ uniform usampler2D line_attributes;
 uniform usampler2D setup_text;
 uniform usampler2D setup_line_attributes;
 uniform sampler2D framebuffer;
+uniform sampler2D old_screen;
 
 uniform uvec2 cursor;
 uniform float cursor_time;
@@ -112,6 +113,9 @@ uniform float blink_time;
 uniform uint mode;
 uniform bool in_setup;
 uniform bool block_cursor;
+
+uniform float alpha = 1.0;
+uniform float intensity = 1.0;
 
 uniform vec3 colorscheme[4];
 
@@ -345,7 +349,7 @@ void main(void)
 
 	// graphics framebuffer for Sixel/ReGIS
 	// adjust the position if we are in setup mode
-	vec2 fbpos = pos.xy;
+	vec2 fbpos = pos;
 	if(in_setup) {
 		fbpos += vec2(0.0, 8.0 / float(text_size.y));
 	}
@@ -357,5 +361,12 @@ void main(void)
 	// get color from graphics framebuffer
 	vec3 graphics = fb.rgb * colorscheme[VT240GetColor(0u, false).y];
 
-	color = vec4(text_color + graphics, 1.0);
+	vec3 result = (text_color + graphics) * intensity;
+
+	// apply exponential decay
+	vec3 old = texture(old_screen, pos).rgb;
+	vec3 decay = mix(old, result, alpha);
+	vec3 onset = max(decay, result);
+
+	color = vec4(onset, 1.0);
 }

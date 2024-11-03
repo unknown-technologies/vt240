@@ -365,6 +365,7 @@ static void print_usage(const char* self)
 		"  -ca           Screen color: amber\n"
 		"  -f 0.75       Electron beam focus\n"
 		"  -i 1.0        Electron beam intensity (brightness)\n"
+		"  -a 0.0        Phosphor decay time constant\n"
 		"  -r            Raw mode, deactivates all post processing; implies -g\n"
 		"  -l            Loopback / local mode\n"
 		"  -s /bin/sh    Execute /bin/sh in the terminal\n"
@@ -414,6 +415,7 @@ int main(int argc, char** argv, char** envp)
 	float focus = 0.75f;
 	float intensity = 1.0f;
 	bool rawmode = false;
+	float afterglow = 0.0f;
 
 	unsigned int color = VT240_SCREEN_COLOR_GREEN;
 
@@ -471,6 +473,14 @@ int main(int argc, char** argv, char** envp)
 		} else if(!strcmp(arg, "-r")) {
 			rawmode = true;
 			enable_glow = false;
+		} else if(!strcmp(arg, "-a")) {
+			if(i + 1 >= argc) {
+				print_usage(self);
+				return 1;
+			} else {
+				afterglow = atof(argv[i + 1]);
+				i += 1;
+			}
 		} else {
 			if(i + 2 > argc) {
 				print_usage(self);
@@ -480,6 +490,11 @@ int main(int argc, char** argv, char** envp)
 			port = atoi(argv[i + 1]);
 			break;
 		}
+	}
+
+	if(afterglow < 0.0f) {
+		printf("Invalid afterglow value detected\n");
+		return 1;
 	}
 
 	if(!loopback && !hostname && !shell) {
@@ -545,8 +560,9 @@ int main(int argc, char** argv, char** envp)
 	VTSetRaw(&renderer, rawmode);
 	VTSetFocus(&renderer, focus);
 	VTSetIntensity(&renderer, intensity);
+	VTSetAfterglow(&renderer, afterglow);
 
-	glEnable(GL_BLEND);
+	glDisable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	glDepthFunc(GL_LEQUAL);

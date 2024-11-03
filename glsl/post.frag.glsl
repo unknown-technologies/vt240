@@ -6,7 +6,6 @@ const int width  = 800;
 const int height = 240;
 
 uniform float focus = 0.75;
-uniform float brightness = 1.0;
 uniform float glow_control = 0.9;
 uniform float glow_intensity = 0.5;
 
@@ -77,13 +76,10 @@ void main(void)
 	// combine VT240 screen with scanlines and a bit of glow
 	vec4 vt240 = (result + pow(glow, vec4(2.0)) * 0.2) * vec4(intensity);
 
-	vec3 pixel;
 	if(raw_mode) {
-		pixel = fb0.rgb * brightness;
+		color = vec4(fb0.rgb, 1.0);
 	} else {
 		// combine with glow for the final result
-		pixel = (vt240 + glow * glow_intensity).rgb;
+		color = vec4((vt240 + glow * glow_intensity).rgb, 1.0);
 	}
-
-	color = vec4(pixel * brightness, 1.0);
 }

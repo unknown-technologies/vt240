@@ -107,6 +107,13 @@ void VTInitRenderer(VTRenderer* self, VT240* vt)
 
 	self->blink_time = 0;
 	self->enable_glow = true;
+	self->focus = 0.75f;
+	self->intensity = 1.0f;
+	self->raw = false;
+	self->afterglow = 0.0f;
+	self->alpha = 1.0f;
+
+	self->vt_fbid = 0;
 
 	self->vt_shader = VTCreateShader(vt240_vert, vt240_frag);
 	self->vt_shader_font_80 = glGetUniformLocation(self->vt_shader, "font_80");
@@ -124,6 +131,9 @@ void VTInitRenderer(VTRenderer* self, VT240* vt)
 	self->vt_shader_mode = glGetUniformLocation(self->vt_shader, "mode");
 	self->vt_shader_in_setup = glGetUniformLocation(self->vt_shader, "in_setup");
 	self->vt_shader_block_cursor = glGetUniformLocation(self->vt_shader, "block_cursor");
+	self->vt_shader_old_screen = glGetUniformLocation(self->vt_shader, "old_screen");
+	self->vt_shader_alpha = glGetUniformLocation(self->vt_shader, "alpha");
+	self->vt_shader_intensity = glGetUniformLocation(self->vt_shader, "intensity");
 
 	self->blur_shader = VTCreateShader(blur_vert, blur_frag);
 	self->blur_shader_tex = glGetUniformLocation(self->blur_shader, "image");
@@ -135,7 +145,6 @@ void VTInitRenderer(VTRenderer* self, VT240* vt)
 	self->post_shader_enableglow = glGetUniformLocation(self->post_shader, "enable_glow");
 	self->post_shader_raw = glGetUniformLocation(self->post_shader, "raw_mode");
 	self->post_shader_focus = glGetUniformLocation(self->post_shader, "focus");
-	self->post_shader_intensity = glGetUniformLocation(self->post_shader, "brightness");
 	GL_ERROR();
 
 	VTCreateBuffers(self);
@@ -167,10 +176,22 @@ void VTSetIntensity(VTRenderer* self, float intensity)
 	self->intensity = intensity;
 }
 
+void VTSetAfterglow(VTRenderer* self, float afterglow)
+{
+	self->afterglow = afterglow;
+}
+
 void VTProcess(VTRenderer* self, unsigned long dt)
 {
 	self->blink_time = (self->blink_time + dt)
 		% (unsigned long) roundf(BLINK_TIME * 1000.0f);
+
+	if(dt == 0) {
+		dt = 1;
+	}
+
+	float fdt = dt / 1000.0f;
+	self->alpha = fdt / (self->afterglow + fdt);
 }
 
 void VTRender(VTRenderer* self, unsigned int width, unsigned int height)
@@ -192,7 +213,7 @@ void VTRender(VTRenderer* self, unsigned int width, unsigned int height)
 	glUseProgram(self->post_shader);
 
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, self->vt_tex);
+	glBindTexture(GL_TEXTURE_2D, self->vt_tex[self->vt_fbid]);
 	glUniform1i(self->post_shader_fbtex, 0);
 
 	glActiveTexture(GL_TEXTURE1);
@@ -202,13 +223,13 @@ void VTRender(VTRenderer* self, unsigned int width, unsigned int height)
 	glUniform1i(self->post_shader_enableglow, self->enable_glow);
 	glUniform1i(self->post_shader_raw, self->raw);
 	glUniform1f(self->post_shader_focus, self->focus);
-	glUniform1f(self->post_shader_intensity, self->intensity);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glBindVertexArray(self->quad_vao);
 	glDrawArrays(GL_TRIANGLES, 0, QUAD_VTX_CNT);
+
+	self->vt_fbid = (self->vt_fbid + 1) % 2;
 
 	GL_ERROR();
 }
@@ -216,7 +237,7 @@ void VTRender(VTRenderer* self, unsigned int width, unsigned int height)
 void VTRenderTerminal(VTRenderer* self)
 {
 	// PASS 0: render VT240 screen to texture
-	glBindFramebuffer(GL_FRAMEBUFFER, self->vt_fb);
+	glBindFramebuffer(GL_FRAMEBUFFER, self->vt_fb[self->vt_fbid]);
 	glClear(GL_COLOR_BUFFER_BIT);
 	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
@@ -255,6 +276,10 @@ void VTRenderTerminal(VTRenderer* self)
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*) self->vt->framebuffer);
 	glUniform1i(self->vt_shader_framebuffer, 6);
 
+	glActiveTexture(GL_TEXTURE7);
+	glBindTexture(GL_TEXTURE_2D, self->vt_tex[(self->vt_fbid + 1) % 2]);
+	glUniform1i(self->vt_shader_old_screen, 7);
+
 	glUniform2ui(self->vt_shader_text_size, self->vt->columns, self->vt->lines);
 	glUniform2ui(self->vt_shader_cursor, self->vt->cursor_x, self->vt->cursor_y);
 	glUniform1f(self->vt_shader_cursor_time, self->vt->cursor_time / 1000.0f);
@@ -262,6 +287,8 @@ void VTRenderTerminal(VTRenderer* self)
 	glUniform1ui(self->vt_shader_mode, self->vt->mode);
 	glUniform1ui(self->vt_shader_in_setup, self->vt->in_setup);
 	glUniform1ui(self->vt_shader_block_cursor, self->vt->config.cursor_style == VT240_CURSOR_STYLE_BLOCK_CURSOR);
+	glUniform1f(self->vt_shader_alpha, self->alpha);
+	glUniform1f(self->vt_shader_intensity, self->intensity);
 
 	if(self->vt->config.display == VT240_DISPLAY_MONOCHROME) {
 		glUniform3fv(self->vt_shader_colorscheme, 4, (GLfloat*) vt240_colors[4 * self->vt->screen_color]);
@@ -273,7 +300,7 @@ void VTRenderTerminal(VTRenderer* self)
 	glDrawArrays(GL_TRIANGLES, 0, QUAD_VTX_CNT);
 
 	// unbind textures
-	for(unsigned int i = 0; i < 7; i++) {
+	for(unsigned int i = 0; i < 8; i++) {
 		glActiveTexture(GL_TEXTURE0 + i);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
@@ -291,7 +318,7 @@ void VTRenderBlur(VTRenderer* self)
 	glUseProgram(self->blur_shader);
 
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, self->vt_tex);
+	glBindTexture(GL_TEXTURE_2D, self->vt_tex[self->vt_fbid]);
 
 	glUniform1i(self->blur_shader_tex, 0);
 	glUniform2f(self->blur_shader_dir, 1.0f, 0.0f);
@@ -424,22 +451,24 @@ void VTCreateTextTexture(VTRenderer* self)
 
 void VTCreateFrameBuffer(VTRenderer* self)
 {
-	glGenFramebuffers(1, &self->vt_fb);
-	glGenTextures(1, &self->vt_tex);
+	glGenFramebuffers(2, self->vt_fb);
+	glGenTextures(2, self->vt_tex);
 
-	glBindTexture(GL_TEXTURE_2D, self->vt_tex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	for(unsigned int i = 0; i < 2; i++) {
+		glBindTexture(GL_TEXTURE_2D, self->vt_tex[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-	glBindFramebuffer(GL_FRAMEBUFFER, self->vt_fb);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self->vt_tex, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, self->vt_fb[i]);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self->vt_tex[i], 0);
 
-	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-		printf("error configuring framebuffer\n");
-		exit(1);
+		if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+			printf("error configuring framebuffer\n");
+			exit(1);
+		}
 	}
 
 	GL_ERROR();

@@ -9,8 +9,9 @@ typedef struct {
 	GLuint		quad_vbo;
 	GLuint		quad_vao;
 
-	GLuint		vt_fb;
-	GLuint		vt_tex;
+	GLuint		vt_fb[2];
+	GLuint		vt_tex[2];
+	unsigned int	vt_fbid;
 
 	GLuint		graphics_tex;
 	GLuint		font_80_tex;
@@ -36,6 +37,9 @@ typedef struct {
 	GLuint		vt_shader_mode;
 	GLuint		vt_shader_in_setup;
 	GLuint		vt_shader_block_cursor;
+	GLuint		vt_shader_old_screen;
+	GLuint		vt_shader_alpha;
+	GLuint		vt_shader_intensity;
 
 	GLuint		blur_fb[2];
 	GLuint		blur_tex[2];
@@ -50,7 +54,6 @@ typedef struct {
 	GLuint		post_shader_enableglow;
 	GLuint		post_shader_raw;
 	GLuint		post_shader_focus;
-	GLuint		post_shader_intensity;
 
 	unsigned long	blink_time;
 
@@ -58,6 +61,10 @@ typedef struct {
 	bool		raw;
 	float		focus;
 	float		intensity;
+
+	/* afterglow effect */
+	float		afterglow;
+	float		alpha;
 } VTRenderer;
 
 void	VTInitRenderer(VTRenderer* renderer, VT240* vt);
@@ -65,6 +72,7 @@ void	VTEnableGlow(VTRenderer* self, bool enabled);
 void	VTSetRaw(VTRenderer* vt, bool raw);
 void	VTSetFocus(VTRenderer* vt, float color);
 void	VTSetIntensity(VTRenderer* vt, float intensity);
+void	VTSetAfterglow(VTRenderer* vt, float afterglow);
 void	VTProcess(VTRenderer* self, unsigned long dt);
 void	VTRender(VTRenderer* self, unsigned int width, unsigned int height);
 
