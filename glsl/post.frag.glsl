@@ -64,7 +64,7 @@ void main(void)
 		fb1 = vec4(0.0);
 	}
 
-	vec4 result = fb0 * vec4(xblend) + fb1 * vec4(1.0 - xblend);
+	vec4 result = mix(fb1, fb0, xblend);
 
 	// get glow
 	vec4 glow = pow(texture(blur_texture, pos), vec4(glow_control));
