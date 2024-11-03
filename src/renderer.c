@@ -94,10 +94,10 @@ static const GLfloat vt240_colors[16][3] = {
 	/* color 3: white  */ { FGCOLOR_R_A * 1.00f, FGCOLOR_G_A * 1.00f, FGCOLOR_B_A * 1.00f },
 
 	/* color */
-	/* color 0: black  */ { 0.0f, 0.0f, 0.0f },
-	/* color 1: blue   */ { 0.0f, 0.0f, 0.6f },
-	/* color 2: red    */ { 0.6f, 0.0f, 0.0f },
-	/* color 3: green  */ { 0.0f, 0.5f, 0.0f },
+	/* color 0: black  */ { 0.00f, 0.00f, 0.00f },
+	/* color 1: blue   */ { 0.13f, 0.25f, 1.00f },
+	/* color 2: red    */ { 1.00f, 0.13f, 0.19f },
+	/* color 3: green  */ { 0.25f, 1.00f, 0.25f },
 };
 
 void VTInitRenderer(VTRenderer* self, VT240* vt)
