@@ -35,7 +35,7 @@ else
 ASANFLG		:=
 endif
 
-CFLAGS		:=	$(OPT) -Wall -std=gnu99 \
+CFLAGS		+=	$(OPT) -Wall -std=gnu99 \
 			-ffunction-sections -fdata-sections \
 			$(INCLUDE) -DUNIX \
 			-D_XOPEN_SOURCE=600 -D_DEFAULT_SOURCE \
@@ -43,7 +43,7 @@ CFLAGS		:=	$(OPT) -Wall -std=gnu99 \
 			$(DEBUG) $(ASANFLG)
 
 LIBS		:=	-lGL -lglfw
-LDFLAGS		:=	-Wl,-x -Wl,--gc-sections $(OPT) $(ASANFLG)
+LDFLAGS		+=	-Wl,-x -Wl,--gc-sections $(OPT) $(ASANFLG)
 
 CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 GLSLFILES	:=	$(foreach dir,$(GLSLSOURCES),$(notdir $(wildcard $(dir)/*.glsl)))
