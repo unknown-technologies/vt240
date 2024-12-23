@@ -344,7 +344,7 @@ void main(void)
 	vec3 text_color = colorscheme[bit ? colors.y : colors.x];
 
 	if(blank) {
-		text_color = colorscheme[colors.x];
+		text_color = colorscheme[0];
 	}
 
 	// graphics framebuffer for Sixel/ReGIS
