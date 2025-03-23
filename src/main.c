@@ -240,6 +240,8 @@ static void enter_fullscreen(void)
 		glfwSetWindowPos(window, pos_x, pos_y);
 		glfwSetWindowSize(window, mode->width, mode->height);
 
+		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+
 		is_fullscreen = true;
 	}
 }
@@ -252,6 +254,8 @@ static void exit_fullscreen(void)
 
 	glfwSetWindowSize(window, SCREEN_WIDTH, SCREEN_HEIGHT);
 	glfwSetWindowPos(window, window_pos_x, window_pos_y);
+
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
 	is_fullscreen = false;
 }
