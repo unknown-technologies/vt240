@@ -17,12 +17,15 @@
 #include <pwd.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <time.h>
 
 #include "types.h"
 #include "vt.h"
 #include "renderer.h"
 #include "telnet.h"
 #include "pty.h"
+
+#define	FPS			60
 
 #define	SCREEN_WIDTH		800
 #define	SCREEN_HEIGHT		480
@@ -45,7 +48,7 @@ static VTRenderer renderer;
 static TELNET telnet;
 static PTY pty;
 
-static unsigned long time = 0;
+static unsigned long current_time = 0;
 
 #ifdef _WIN32
 PFNGLGENFRAMEBUFFERSPROC	glGenFramebuffers;
@@ -112,7 +115,7 @@ void process(void)
 {
 	unsigned long now = get_time();
 
-	unsigned long dt = now - time;
+	unsigned long dt = now - current_time;
 
 	if(use_telnet) {
 		TELNETPoll(&telnet);
@@ -125,7 +128,7 @@ void process(void)
 	VT240Process(&vt, dt);
 	VTProcess(&renderer, dt);
 
-	time = now;
+	current_time = now;
 }
 
 static int get_monitor(GLFWmonitor** monitor, GLFWwindow* window)
@@ -370,6 +373,7 @@ static void print_usage(const char* self)
 		"  -l            Loopback / local mode\n"
 		"  -s /bin/sh    Execute /bin/sh in the terminal\n"
 		"  -t host port  Establish TELNET connection to host:port\n"
+		"  -u            Unlimited FPS\n"
 		"\n"
 		"If no option is provided, -s $(getent passwd $UID | cut -d: -f7) is assumed.\n", self);
 }
@@ -416,6 +420,7 @@ int main(int argc, char** argv, char** envp)
 	float intensity = 1.0f;
 	bool rawmode = false;
 	float afterglow = 0.0f;
+	bool unlimited_fps = false;
 
 	unsigned int color = VT240_SCREEN_COLOR_GREEN;
 
@@ -451,6 +456,8 @@ int main(int argc, char** argv, char** envp)
 			color = VT240_SCREEN_COLOR_GREEN;
 		} else if(!strcmp(arg, "-ca")) {
 			color = VT240_SCREEN_COLOR_AMBER;
+		} else if(!strcmp(arg, "-u")) {
+			unlimited_fps = true;
 		} else if(!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
 			print_usage(self);
 			return 0;
@@ -513,7 +520,8 @@ int main(int argc, char** argv, char** envp)
 
 	glfwWindowHint(GLFW_AUTO_ICONIFY, 0);
 
-	window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "VT240", NULL, NULL);
+	window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "VT240", NULL,
+			NULL);
 	if(!window) {
 		printf("Failed to create GLFW window\n");
 		glfwTerminate();
@@ -597,9 +605,58 @@ int main(int argc, char** argv, char** envp)
 		vt.resize = pty_resize;
 	}
 
-	time = get_time();
+	current_time = get_time();
 
+#define	FRAME_TIME	((unsigned int) (1000.0 / FPS))
+	unsigned long last_time = get_time();
+	unsigned long last_frame = get_time();
+	unsigned long next = last_frame + FRAME_TIME;
+	unsigned long frames = 0;
+	unsigned long fps = 0;
+	bool fps_limit = false;
 	while(!glfwWindowShouldClose(window)) {
+		/* compute current FPS */
+		unsigned long now = get_time();
+		unsigned long dt = now - last_time;
+		if(dt >= 1000) {
+			last_time = now;
+			fps = frames;
+			frames = 0;
+
+#ifdef SHOW_FPS
+			printf("\r\x1b[2KFPS: %lu", fps);
+			fflush(stdout);
+#endif
+
+			if(!unlimited_fps && fps > FPS * 4) {
+				printf("\r\x1b[2KLimiting FPS to %u\n", FPS);
+				fps_limit = true;
+			}
+		} else {
+			frames++;
+		}
+
+		if(fps_limit && !unlimited_fps) {
+			/* sleep between frames to roughly get the target FPS,
+			 * this is relevant on GPUs which ignore vsync like
+			 * NVIDIA T4 cards */
+			unsigned long unow = get_time();
+			if(next < unow) {
+				next = last_frame + FRAME_TIME;
+				if(next < unow) {
+					next = unow + FRAME_TIME;
+				}
+			}
+			unsigned long udelay = next - unow;
+			struct timespec dly = {
+				.tv_sec = udelay / 1000,
+				.tv_nsec = (udelay % 1000) * 1000000
+			};
+			nanosleep(&dly, NULL);
+
+			last_frame = unow;
+		}
+
 		glfwGetFramebufferSize(window, &screen_width, &screen_height);
 
 		glViewport(0, 0, screen_width, screen_height);
