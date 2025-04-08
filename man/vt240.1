@@ -1,0 +1,109 @@
+.\" vim:set tw=72 noet:
+.\" Bulleted paragraph
+.de bP
+.ie n  .IP \(bu 4
+.el    .IP \(bu 2
+..
+.
+.TH VT240 "1" "April 2025" "DEC VT240" "User Commands"
+.
+.SH NAME
+vt240 \- DEC VT240 terminal emulator
+.
+.SH SYNOPSIS
+.B vt240
+[\fI\,OPTION\/\fR]... [\fB\,\-l\fR | \fB\-s\fR \fIcommand\fR |
+\fB\-t\fR \fIhostname\fR \fIport\/\fR]
+.
+.SH DESCRIPTION
+.\" Add any additional description here
+.PP
+The \fBvt240\fR program is a GPU accelerated terminal emulator which
+emulates the DEC VT240 terminal with reasonable accuracy.
+.TP
+\fB\-h\fR
+display a short help message and exit.
+.TP
+\fB\-g\fR
+disable glow post-processing effect.
+.TP
+\fB\-cg\fR
+set monochrome screen color to green.
+.TP
+\fB\-cw\fR
+set monochrome screen color to white.
+.TP
+\fB\-ca\fR
+set monochrome screen color to amber.
+.TP
+\fB\-f\fR \fI0.75\fR
+set the electron beam focus. The focus has to be greater than zero. A
+focus below 1.0 makes the beam wider, a focus greater than 1.0 makes the
+beam smaller.
+.TP
+\fB\-i\fR \fI1.0\fR
+set the electron beam intensity (brightness). This value has to be
+greater than zero.
+.TP
+\fB\-a\fR \fI0.0\fR
+set the phosphor afterglow time constant. A value of zero means no
+afterglow is applied. The bigger the value, the longer it takes for a
+pixel to fade to black.
+.TP
+\fB\-r\fR
+enables raw mode, which disables all post-processing. This option also
+implies \fB\-g\fR.
+.TP
+\fB\-u\fR
+enables unlimited FPS mode. If this option is not set, then an automatic
+frame limiter will limit the FPS to 60 if more than 240 FPS are rendered
+otherwise. This seems to be necessary for NVIDIA T4 graphics cards.
+.TP
+\fB\-l\fR
+enables local mode, which redirects all input to the screen. This is
+equivalent of connecting the RX pin to the TX pin on a real VT240
+terminal.
+.TP
+\fB\-s\fR \fI/bin/sh\fR
+execute the program \fI/bin/sh\fR in the terminal emulator.
+.TP
+\fB\-t\fR \fIhost\fR \fIport\fR
+connect to the TELNET server at \fIhost\fR:\fIport\fR.
+.
+.
+.PP
+If no option is provided, \fB\-s $(getent passwd $UID | cut \-d:
+\-f7)\fR is assumed, which means the user's default shell is started.
+.
+.PP
+When a program is run with \fB\-s\fR, the \fBTERM\fR environment
+variable is set to \fBvt220\fR. If the \fBLANG\fR environment variable
+is set to an UTF-8 locale, it is reset to \fBLANG=C\fR to avoid display
+problems.
+.
+.SH KEYBOARD
+A DEC VT240 does not have all the keys you usually find on a PC keyboard
+and some keys have a very different meaning. In particular, the function
+keys F1-F5 are \[lq]local\[rq] keys which configure the terminal and have no
+associated sequence that could be sent to the host.
+.PP
+The VT240 emulator uses the following key map for local keys:
+.bP
+F2 = toggle fullscreen
+.bP
+F3 = setup
+.bP
+F5 = exit the terminal emulator
+.
+.SH AUTHOR
+Written by unknown.
+.
+.SH "REPORTING BUGS"
+To report rendering glitches, general bugs, and deviations from the real
+DEC VT240's behaivor, use the issue tracker at
+.UR https://github.com/unknown-technologies/vt240
+.UE
+.
+.SH "SEE ALSO"
+.MR xterm 1 ,
+.MR telnet 1
