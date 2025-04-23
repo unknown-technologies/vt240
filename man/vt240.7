@@ -1,18 +1,41 @@
 .\" vim:set tw=72 cc=72 spell spelllang=en:
+.\"
+.\" FIXME: This is an ugly hack to avoid strange space in tables caused
+.\" by invisible page breaks.
+.\" The hack sets the page size to "very large"
+.if n .pl 32767u
+.
 .\" Bulleted paragraph
 .de bP
-.ie n  .IP \(bu 4
-.el    .IP \(bu 2
+.  ie n  .IP \(bu 4
+.  el    .IP \(bu 2
 ..
 .
-.de Bi
-.  while (\\n[.$] > 0) \{\\c
-.    nop \\f(BI\\$1\\fR \\c
-.    shift
-.  \}
+.\" Bold and italic simultaneously
+.de1 Bi
+.  nop \\f(BI\\$*\\fR \\c
+..
+.
+.\" Sub-subsection, typeset it like a subsection for now
+.de1 SSS
+.  SS \\$*
+..
+.
+.\" Numbered table
+.de1 TBL
+.  SS "Table \\$1  \\$2"
+..
+.
+.\" Numbered figure
+.de1 FIG
+.  SS "Figure \\$1  \\$2"
 ..
 .
 .\" TODO: this is ultra hacky, but it works ... at least for now
+.\" The TL/IL/BPC macros are used for tagged/indented lines instead of
+.\" paragraphs. This means there is *no* paragraph break between such
+.\" lines. It is intended for bullet point lists without empty lines
+.\" in-between.
 .de1 TL
 .\".  an-break-paragraph
 .  if \\n[.$] .nr an-prevailing-indent (n;\\$1)
@@ -38,11 +61,11 @@
 .  \}
 ..
 .de BPC
-.  nop .IL \(bu 2
-.  nop .na
-.  nop \\$1
-.  nop .br
-.  nop .ad
+.IL \(bu 2
+.na
+\\$1
+.br
+.ad
 ..
 .
 .TH VT240 7 "April 2025" "unknown technologies"
@@ -64,7 +87,7 @@ on. You can use special commands to set the terminal for graphics mode.
 .SS "TERMINAL FEATURES"
 The following sections summarize the major VT240 features.
 .\" Appendix A provides a complete list of terminal specifications.
-.SS "Display Features"
+.SSS "Display Features"
 The VT240 uses a monochrome or color monitor with the following
 features.
 .bP
@@ -82,7 +105,7 @@ Horizontal scrolling on 16-pixel boundaries in graphics mode
 .bP
 Vertical scrolling on one-pixel boundary in graphics mode
 .
-.SS "Text Features"
+.SSS "Text Features"
 This list summarizes the major VT240 text features.
 .bP
 Five character sets of 94 characters each (including DEC multinational
@@ -108,7 +131,7 @@ VT52 mode
 .bP
 Control representation mode
 .
-.SS "Graphics Features"
+.SSS "Graphics Features"
 This list summarizes the major VT240 graphics features.
 .bP
 ReGIS graphics
@@ -148,7 +171,7 @@ EIA RS232C printer port
 .bP
 Optional integral modem
 .
-.SS  "OPERATING STATES"
+.SS "OPERATING STATES"
 The VT240 has three major operating states.
 .bP
 Set-Up
@@ -157,7 +180,7 @@ On-Line
 .bP
 Local
 .
-.SS "Set-Up"
+.SSS "Set-Up"
 The set-up state lets you select or examine terminal operating features
 (such as transmit and receive speeds) from the keyboard. You also use
 set-up to select the on-line and local states. The
@@ -168,7 +191,7 @@ You select set-up by pressing the
 .B Set-Up
 key.
 .
-.SS "On-Line"
+.SSS "On-Line"
 The on-line state lets the terminal communicate with a host computer.
 Data entered at the keyboard is sent to the host computer. Data received
 from the host computer is displayed on the monitor. You can also display
@@ -177,7 +200,7 @@ set-up.
 .P
 You can only select on-line from set-up.
 .
-.SS Local
+.SSS "Local"
 The local state lets you place the host computer on \(lqhold.\(rq Data
 entered at the keyboard is sent to the monitor, but not the host
 computer. Data received from the host computer is stored; this data is
@@ -336,16 +359,16 @@ T}
 A code table is a convenient way to represent 7-bit and 8-bit
 characters, because you can see groupings of characters and their
 relative codes clearly.
-.SS "7-Bit ASCII Code Table"
-The following table is the 7-bit ASCII code table. There are 128
-positions corresponding to 128 character codes, arranged in a matrix of
-8 columns and 16 rows.
+.SSS "7-Bit ASCII Code Table"
+Table 2-1 is the 7-bit ASCII code table. There are 128 positions
+corresponding to 128 character codes, arranged in a matrix of 8 columns
+and 16 rows.
 .P
 Each row represents a possible value of the four least significant bits
 of a 7-bit code. Each column represents a possible value of the tree
 most significant bits.
 .P
-The table shows the octal, decimal, and hexadecimal code for each ASCII
+Table 2-1 shows the octal, decimal, and hexadecimal code for each ASCII
 character. You can also represent any character by its position in the
 table. For example, the character H (column 4, row 8) can be represented
 as 4/8. This column/row notation is used to represent characters and
@@ -361,7 +384,8 @@ ESC   #   6
 .P
 means that the ESC character is at column 1, row 11; the character # is
 at column 2, row 3; and the character 6 is at column 3, row 6.
-.P
+.
+.TBL "2-1" "7-Bit ASCII Code Table"
 .TS
 c c cB cB cB cB cB cB cB cB
 c cB c c c c c c c c.
@@ -393,7 +417,7 @@ defined by ANSI, graphic characters and control characters.
 .P
 .I Graphic characters
 are characters you can display on a video screen. The ASCII graphic
-characters are in positions 2/1 through 7/14 of the table. They include
+characters are in positions 2/1 through 7/14 of Table 2-1. They include
 all American and English alphanumeric characters, plus punctuation marks
 and various text symbols. Examples are C, n, \(dq, !, +, and $. (The
 English pound sign is not an ASCII graphic character.)
@@ -402,7 +426,7 @@ English pound sign is not an ASCII graphic character.)
 are not displayed. They are single-byte codes that perform specific
 functions in the data communications and text processing. The ASCII
 control characters are in positions 0/0 through 1/15 (columns 0 and 1)
-of the table. The SP character (space, 2/0) may act as a graphic
+of Table 2-1. The SP character (space, 2/0) may act as a graphic
 character or a control character, depending on the context. DEL (7/15)
 is always used as a control character.
 .P
@@ -410,16 +434,17 @@ Control character codes and functions are standardized by ANSI. Examples
 of ASCII control characters with their ANSI-standard mnemonic are CR
 (carriage return), FF (form feed), and CAN (cancel).
 .
-.SS "8-Bit Code Table"
+.SSS "8-Bit Code Table"
 In general the conventions for 7-bit character encoding also apply to
-8-bit character encoding for the VT240. The following table shows the
-8-bit code table. It has twice as many columns as the 7-bit table,
-because it contains 256 (versus 128) code values.
+8-bit character encoding for the VT240. Table 2-2 shows the 8-bit code
+table. It has twice as many columns as the 7-bit table, because it
+contains 256 (versus 128) code values.
 .P
 As with the 7-bit table, each row represents a possible value of the
 four least significant bits of an 8-bit code. Each column represents a
 possible value of the four most significant bits.
-.P
+.
+.TBL "2-2" "8-Bit ASCII Code Table"
 .TS
 expand nowarn tab(@);
 c cB cB cB cB cB cB cB cB cB cB cB cB cB cB cB cB
@@ -450,9 +475,9 @@ environment. All codes on the right half of the table (columns 8 through
 15) have their eighth bit set. You can use these codes only in an 8-bit
 compatible environment.
 .P
-The 8-bit code table has two sets of control characters, C0 (control
-zero) and C1 (control one). The table also has two sets of graphic
-characters, GL (graphic left) and GR (graphic right).
+The 8-bit code table (Table 2-2) has two sets of control characters, C0
+(control zero) and C1 (control one). The table also has two sets of
+graphic characters, GL (graphic left) and GR (graphic right).
 .P
 On the VT240, the basic functions of the C0 and C1 codes are defined by
 ANSI. C0 codes represent the ASCII control characters described earlier.
@@ -493,10 +518,10 @@ National replacement character (NRC) sets
 .bP
 Down-line-loadable
 .
-.SS  "DEC Multinational Character Set"
+.SSS "DEC Multinational Character Set"
 By default, when you power up or reset the terminal, the DEC
-multinational character set is mapped into the 8-bit code matrix
-(columns 0 through 15).
+multinational character set (Table 2-3) is mapped into the 8-bit code
+matrix (columns 0 through 15).
 .P
 The 7-bit compatible left half of the DEC multinational set is the ASCII
 graphics set. The C0 codes are the ASCII control characters, and the GL
@@ -518,8 +543,7 @@ keyboards.
 .P
 The DEC supplemental graphic character set is not available in VT52 and
 VT100 modes.
-.SS "DEC Multinational Character Set (Left Half - C0 and GL Codes)"
-.P
+.TBL "2-3" "DEC Multinational Character Set (Left Half - C0 and GL Codes)"
 .TS
 c c cB cB cB cB cB cB cB cB
 c cB c c c c c c c c.
@@ -545,8 +569,8 @@ cB c c c c c c c c c.
 14	1110	SO	RS	.	>	N	\(ha	n	\(ti
 15	1111	SI	US	/	?	O	\&_	o	DEL
 .TE
-.SS "DEC Multinational Character Set (Right Half - C1 and GR Codes)"
-.P
+.
+.TBL "2-3" "DEC Multinational Character Set (Right Half - C1 and GR Codes)"
 .TS
 c c cB cB cB cB cB cB cB cB
 c cB c c c c c c c c.
@@ -573,12 +597,12 @@ cB c c c c c c c c c.
 15	1111	SS3	APC		\(r?	\(:I	\(ss	\(:i
 .TE
 .
-.SS "DEC Special Graphics Set"
+.SSS "DEC Special Graphics Set"
 The terminal's graphic repertoire includes the DEC special graphics set
 (also known as the VT100 line drawing character set). This character set
-has about two-thirds of the ASCII graphic characters. It also has
-special symbols and short line segments. The line segments let you
-create a limited range of pictures while still using text mode.
+(Table 2-4) has about two-thirds of the ASCII graphic characters. It
+also has special symbols and short line segments. The line segments let
+you create a limited range of pictures while still using text mode.
 .P
 Commands described in Chapter \fIRECEIVED CODES\fR let you map the DEC
 special graphics set into either GL or GR, replacing either the ASCII
@@ -587,12 +611,12 @@ that you switch between ASCII and DEC special graphics in GL, because
 the latter has most of the ASCII graphic characters. Also, this mapping
 is compatible with a VT100 terminal.
 .
-.SS "National Replacement Character Sets (NRC sets)
+.SSS "National Replacement Character Sets (NRC sets)"
 The terminal's graphic character repertoire includes national
-replacement character sets. These sets are available when you select
-national mode. Only one national character set is available for use at
-any one time. The NRC set used depends on the keyboard selection in
-set-up as outlined below.
+replacement character sets (Tables 2-5 through 2-15). These sets are
+available when you select national mode. Only one national character set
+is available for use at any one time. The NRC set used depends on the
+keyboard selection in set-up as outlined below.
 .P
 .TS
 lB lB
@@ -615,13 +639,13 @@ Swiss (French)	Swiss
 Swiss (German)	Swiss
 .TE
 .
-.SS "Down-Line-Loadable Character Set"
+.SSS "Down-Line-Loadable Character Set"
 The terminal provides for a 94-character down-line-loadable graphic
 character set. You can define this character set and map it into either
 GL or GR, as described in Chapter \fIRECEIVED CODES\fR. This feature is
 available only in VT200 mode.
 .
-.SS "DEC Special Graphics Character Set"
+.TBL "2-4" "DEC Special Graphics Character Set"
 .P
 .TS
 c c cB cB cB cB cB cB cB cB
@@ -649,7 +673,7 @@ cB c c c c c c c c c.
 15	1111	SI	US	/	?	O		\[u23BA]	DEL
 .TE
 .
-.SS "British NRC Set (British Keyboard Selection)"
+.TBL "2-5" "British NRC Set (British Keyboard Selection)"
 .TS
 c c cB cB cB cB cB cB cB cB
 c cB c c c c c c c c.
@@ -676,7 +700,7 @@ cB c c c c c c c c c.
 15	1111	SI	US	/	?	O	\&_	o	DEL
 .TE
 .
-.SS "Dutch NRC Set (Dutch Keyboard Selection)"
+.TBL "2-6" "Dutch NRC Set (Dutch Keyboard Selection)"
 .TS
 c c cB cB cB cB cB cB cB cB
 c cB c c c c c c c c.
@@ -703,7 +727,7 @@ cB c c c c c c c c c.
 15	1111	SI	US	/	?	O	\&_	o	DEL
 .TE
 .
-.SS "Finnish NRC Set (Finnish Keyboard Selection)"
+.TBL "2-7" "Finnish NRC Set (Finnish Keyboard Selection)"
 .TS
 c c cB cB cB cB cB cB cB cB
 c cB c c c c c c c c.
@@ -730,7 +754,7 @@ cB c c c c c c c c c.
 15	1111	SI	US	/	?	O	\&_	o	DEL
 .TE
 .
-.SS "French NRC Set (Flemish and French/Belgian Keyboard Selections)"
+.TBL "2-8" "French NRC Set (Flemish and French/Belgian Keyboard Selections)"
 .TS
 c c cB cB cB cB cB cB cB cB
 c cB c c c c c c c c.
@@ -757,7 +781,7 @@ cB c c c c c c c c c.
 15	1111	SI	US	/	?	O	\&_	o	DEL
 .TE
 .
-.SS "French Canadian NRC Set (French Canadian Keyboard Selection)"
+.TBL "2-9" "French Canadian NRC Set (French Canadian Keyboard Selection)"
 .TS
 c c cB cB cB cB cB cB cB cB
 c cB c c c c c c c c.
@@ -784,7 +808,7 @@ cB c c c c c c c c c.
 15	1111	SI	US	/	?	O	\&_	o	DEL
 .TE
 .
-.SS "German NRC Set (German Keyboard Selection)"
+.TBL "2-10" "German NRC Set (German Keyboard Selection)"
 .TS
 c c cB cB cB cB cB cB cB cB
 c cB c c c c c c c c.
@@ -811,7 +835,7 @@ cB c c c c c c c c c.
 15	1111	SI	US	/	?	O	\&_	o	DEL
 .TE
 .
-.SS "Italian NRC Set (Italian Keyboard Selection)"
+.TBL "2-11" "Italian NRC Set (Italian Keyboard Selection)"
 .TS
 c c cB cB cB cB cB cB cB cB
 c cB c c c c c c c c.
@@ -838,7 +862,7 @@ cB c c c c c c c c c.
 15	1111	SI	US	/	?	O	\&_	o	DEL
 .TE
 .
-.SS "Norwegian/Danish NRC Set (Danish and Norwegian Keyboard Selections)"
+.TBL "2-12" "Norwegian/Danish NRC Set (Danish and Norwegian Keyboard Selections)"
 .TS
 c c cB cB cB cB cB cB cB cB
 c cB c c c c c c c c.
@@ -865,7 +889,7 @@ cB c c c c c c c c c.
 15	1111	SI	US	/	?	O	\&_	o	DEL
 .TE
 .
-.SS "Spanish NRC Set (Spanish Keyboard Selection)"
+.TBL "2-13" "Spanish NRC Set (Spanish Keyboard Selection)"
 .TS
 c c cB cB cB cB cB cB cB cB
 c cB c c c c c c c c.
@@ -892,7 +916,7 @@ cB c c c c c c c c c.
 15	1111	SI	US	/	?	O	\&_	o	DEL
 .TE
 .
-.SS "Swedish NRC Set (Swedish Keyboard Selection)"
+.TBL "2-14" "Swedish NRC Set (Swedish Keyboard Selection)"
 .TS
 c c cB cB cB cB cB cB cB cB
 c cB c c c c c c c c.
@@ -919,7 +943,7 @@ cB c c c c c c c c c.
 15	1111	SI	US	/	?	O	\&_	o	DEL
 .TE
 .
-.SS "Swiss NRC Set (Swiss/French and Swiss German Keyboard Selections)"
+.TBL "2-15" "Swiss NRC Set (Swiss/French and Swiss German Keyboard Selections)"
 .TS
 c c cB cB cB cB cB cB cB cB
 c cB c c c c c c c c.
@@ -980,7 +1004,7 @@ specific families of products. Private sequences, like the ANSI
 standardized sequences, follow ANSI standards for character code
 composition.
 .
-.SS "Escape Sequence"
+.SSS "Escape Sequence"
 An escape sequence starts with the C0 character ESC (1/11), followed by
 one or more ASCII graphic characters. For example
 .P
@@ -1045,7 +1069,7 @@ of 4/0 through 5/15 one byte shorter by removing the ESC and adding 40
 (hexadecimal) to the code of the second character. This generates an
 8-bit control character.
 .
-.SS "Control Sequences"
+.SSS "Control Sequences"
 A control sequence starts with CSI (9/11), followed by one or more ASCII
 graphic characters. But CSI (9/11) can also be expressed as the 7-bit
 code extension ESC [ (1/11 5/11). So you can express all control
@@ -1071,7 +1095,7 @@ control sequence. CSI uses one less byte than ESC [, so you gain
 processing speed. However, you can only use a sequence starting with CSI
 in an 8-bit environment (because CSI is a C1 control character).
 .
-.SS "Device Control Strings"
+.SSS "Device Control Strings"
 A device control string (DCS) is a delimited string of characters used
 in a data stream as a logical entity for control purposes. It consists
 of an opening delimiter (a device control string introducer), a command
@@ -1111,7 +1135,7 @@ the terminal must operate in a VT200 mode. When operating in VT100 or
 VT52 mode, you are limited to working in a 7-bit environment. The
 following sections describe conventions that apply in VT200 mode.
 .
-.SS "Conventions for Codes Received by the Terminal"
+.SSS "Conventions for Codes Received by the Terminal"
 The terminal expects to receive character codes in a form consistent
 with 8-bit encoding. Your application can use the C0 and C1 control
 codes, as well as the 7-bit C1 code extensions, if necessary. The
@@ -1125,7 +1149,7 @@ factory-default mapping (which is set when you power up or reset the
 terminal) is the DEC multinational character set. This mapping assumes
 the current terminal mode is one of the VT200 modes.
 .
-.SS "Conventions for Codes Sent by the Terminal"
+.SSS "Conventions for Codes Sent by the Terminal"
 Codes sent by the terminal to a program can come directly from the
 keyboard or in response to commands issued from the host (application
 program or operating system). In a VT200 mode, the terminal always sends
@@ -1162,14 +1186,14 @@ field in the Set-Up Display screen. You cannot use an escape sequence or
 invoke this mode from the host computer.
 .P
 When the terminal is in a VT200 mode, selecting the set-up \(lqDisplay
-Controls\(rq field temporarily loads C0, GL, C1, and GR as shown in the
-following table. All characters are displayed in the font shown for C0,
-GL, C1, and GR.
+Controls\(rq field temporarily loads C0, GL, C1, and GR as shown in
+Table 2-16. All characters are displayed in the font shown for C0, GL,
+C1, and GR.
 .P
 When the terminal is in a VT52 or VT100 mode, selecting the \(lqDisplay
-Controls\(rq field temporarily loads C0 and GL as shown in the following
-table. All characters are displayed in the font shown for C0 and GL. (C1
-and GR are meaningless in VT52 or VT100 modes.)
+Controls\(rq field temporarily loads C0 and GL as shown in Table 2-16.
+All characters are displayed in the font shown for C0 and GL. (C1 and GR
+are meaningless in VT52 or VT100 modes.)
 .P
 When you select the \(lqDisplay Controls\(rq field, the terminal
 displays all control functions and prevents most from executing. There
@@ -1186,7 +1210,7 @@ ReGIS has a corresponding mode - display ReGIS. In display ReGIS mode,
 ReGIS commands appear on the bottom line of the monitor as the pictures
 are drawn.
 .
-.SS "Display Controls Font (Left Half)"
+.TBL "2-16" "Display Controls Font (Left Half)"
 .TS
 c c cB cB cB cB cB cB cB cB
 c cB c c c c c c c c.
@@ -1213,7 +1237,7 @@ cB c c c c c c c c c.
 15	1111	\[u240F]	\[u241F]	/	?	O	\&_	o	\[u2421]
 .TE
 .
-.SS "Display Controls Font (Right Half)"
+.TBL "2-16" "Display Controls Font (Right Half)"
 .TS
 c c cB cB cB cB cB cB cB cB
 c cB c c c c c c c c.
@@ -1256,7 +1280,7 @@ describes significant differences among the keyboards.
 The terminal keyboard consists of a main keypad, an editing keypad, an
 auxiliary keypad, and the top-row function keys.
 .
-.SS "Main Keypad"
+.SSS "Main Keypad"
 The main keypad consists of standard keys (used to generate letters,
 numbers, and symbols) and function keys (used to generate special
 function codes).
@@ -1302,7 +1326,7 @@ the same way as for other nonalphabetic keys.
 .P
 .I Function Keys -
 This section describes the main keypad function keys. The column/row
-notation used in the descriptions refers to the code table.
+notation used in the descriptions refers to Table 2-1.
 .P
 .TS
 tab(@);
@@ -1361,12 +1385,12 @@ characters that cannot be typed directly from the keyboard.
 T}
 .TE
 .
-.SS "Editing Keypad"
-The editing keypad provides editing keys and cursor keys. The first
-table defines the codes sent by the editing keys. The second table
-defines the codes sent by the cursor control keys.
+.SSS "Editing Keypad"
+The editing keypad provides editing keys and cursor keys. Table 3-1
+defines the codes sent by the editing keys. Table 3-2 defines the codes
+sent by the cursor control keys.
 .
-.SS "Codes Generated by Editing Keys"
+.TBL "3-1" "Codes Generated by Editing Keys"
 .TS
 lB lB lB
 l l l.
@@ -1374,28 +1398,22 @@ _
 Key	VT200 Mode	VT100, VT52, 4010/4014 Modes*
 _
 Find	9/11 3/1  7/14	-
-.B
-	CSI  1    ~
+	\fBCSI  1    \(ti\fR
 
 Insert Here	9/11 3/2  7/14	-
-.B
-	CSI  2    ~
+	\fBCSI  2    \(ti\fR
 
 Remove	9/11 3/3  7/14	-
-.B
-	CSI  3    ~
+	\fBCSI  3    \(ti\fR
 
 Select	9/11 3/4  7/14	-
-.B
-	CSI  4    ~
+	\fBCSI  4    \(ti\fR
 
 Prev Screen	9/11 3/5  7/14	-
-.B
-	CSI  5    ~
+	\fBCSI  5    \(ti\fR
 
 Next Screen\[u253C]	9/11 3/6  7/14	-
-.B
-	CSI  6    ~
+	\fBCSI  6    \(ti\fR
 _
 .TE
 .P
@@ -1406,7 +1424,7 @@ codes.
 In 4010/4014 mode, you use the \fBNext Screen\fR key as a \fBClear
 Screen\fR key.
 .
-.SS "Codes Generated by Cursor Control Keys"
+.TBL "3-2" "Codes Generated by Cursor Control Keys"
 .TS
 lB lB lB lB lB
 lB lB lB lB lB
@@ -1447,7 +1465,7 @@ _
 ANSI mode applies to VT200 and VT100 modes. VT52 mode is an
 ANSI-incompatible mode.
 .
-.SS "Auxiliary Keypad"
+.SSS "Auxiliary Keypad"
 The characters sent by the auxiliary keypad keys depend on the setting
 of two features, the operating mode (ANSI or VT52) and the keypad
 (application or numeric) features. The application keypad feature is
@@ -1455,10 +1473,10 @@ usually selected only by the computer, but can be selected in the
 General Set-Up screen. See Chapter \fIRECEIVED CODES\fR for more
 information about keypad character selection.
 .P
-The following table lists the character codes generated by the auxiliary
-keypad in ANSI (VT100, VT200) mode and in VT52 mode.
+Table 3-3 lists the character codes generated by the auxiliary keypad in
+ANSI (VT100, VT200) mode and in VT52 mode.
 .
-.SS "Codes Generated by Auxiliary Keypad Keys"
+.TBL "3-3" "Codes Generated by Auxiliary Keypad Keys"
 .TS
 expand;
 cB s s cB s
@@ -1598,7 +1616,7 @@ line feed/new line mode. When reset, line feed/new line mode causes
 \fBReturn\fR to generate a single control character (CR). When set, the
 mode causes \fBReturn\fR to generate two control characters (CR, LF).
 .
-.SS "Top-Row Function Keys"
+.SSS "Top-Row Function Keys"
 There are 20 top-row function keys, F1 through F20. The first five keys
 (F1 through F5) labeled
 .BR "Hold Screen" ,
@@ -1611,9 +1629,9 @@ do not send codes; they are local function keys. Keys
 .B F6
 through
 .B F20
-send the codes defined in the following table.
+send the codes defined in Table 3-4.
 .
-.SS "Codes Generated by Top-Row Function Keys"
+.TBL "3-4" "Codes Generated by Top-Row Function Keys"
 .TS
 lB lB lB lB
 lB lB lB lB
@@ -1686,61 +1704,61 @@ Data/Talk	(F4)	-	-
 Break	(F5)	-	-
 
 F6	F6	9/11  3/1  3/7  7/14	-
-		CSI   1    7    ~
+		CSI   1    7    \(ti
 
 F7	F7	9/11  3/1  3/8  7/14	-
-		CSI   1    8    ~
+		CSI   1    8    \(ti
 
 F8	F8	9/11  3/1  3/9  7/14	-
-		CSI   1    9    ~
+		CSI   1    9    \(ti
 
 F9	F9	9/11  3/2  3/0  7/14	-
-		CSI   2    0    ~
+		CSI   2    0    \(ti
 
 F10	F10	9/11  3/2  3/1  7/14	-
-		CSI   2    1    ~
+		CSI   2    1    \(ti
 
 F11 (ESC)	F11	9/11  3/2  3/3  7/14	1/11
-		CSI   2    3    ~	ESC
+		CSI   2    3    \(ti	ESC
 
 F12 (BS)	F12	9/11  3/2  3/4  7/14	0/8
-		CSI   2    4    ~	BS
+		CSI   2    4    \(ti	BS
 
 F13 (LF)	F13	9/11  3/2  3/5  7/14	0/10
-		CSI   2    5    ~	LF
+		CSI   2    5    \(ti	LF
 
 F14	F14	9/11  3/2  3/6  7/14	-
-		CSI   2    6    ~
+		CSI   2    6    \(ti
 
 Help	(F15)	9/11  3/2  3/8  7/14	-
-		CSI   2    8    ~
+		CSI   2    8    \(ti
 
 Do	(F16)	9/11  3/2  3/9  7/14	-
-		CSI   2    9    ~
+		CSI   2    9    \(ti
 
 F17	F17	9/11  3/3  3/1  7/14	-
-		CSI   3    1    ~
+		CSI   3    1    \(ti
 
 F18	F18	9/11  3/3  3/2  7/14	-
-		CSI   3    2    ~
+		CSI   3    2    \(ti
 
 F19	F19	9/11  3/3  3/3  7/14	-
-		CSI   3    3    ~
+		CSI   3    3    \(ti
 
 F20	F20	9/11  3/3  3/4  7/14	-
-		CSI   3    4    ~
+		CSI   3    4    \(ti
 _
 .TE
 .P
 F1 through F5 are local function keys and do not generate codes.
 .
-.SS "Control Codes"
-The following table defines the keys and key combinations used to send
-control codes. These keys and combinations are valid on all keyboards.
-The control codes are C0 7-bit control characters; there is no similar
+.SSS "Control Codes"
+Table 3-5 defines the keys and key combinations used to send control
+codes. These keys and combinations are valid on all keyboards.  The
+control codes are C0 7-bit control characters; there is no similar
 mechanism for sending C1 8-bit control characters.
 .
-.SS "Keys Used to Generate 7-Bit Control Characters"
+.TBL "3-5" "Keys Used to Generate 7-Bit Control Characters"
 .TS
 lB lB lB lB
 lB lB lB lB
@@ -1779,7 +1797,7 @@ SUB	1/10	Z	-
 ESC	1/11	3,[	F11 (ESC)*
 FS	1/12	4,\(rs	-
 GS	1/13	5,]	-
-RS	1/14	6,~	-
+RS	1/14	6,\(ti	-
 US	1/15	7,?	-
 DEL	7/15	8	Delete
 _
@@ -1931,12 +1949,12 @@ This chapter describes the codes as used in VT200 mode, unless otherwise
 specified.
 .
 .SS "CONTROL CHARACTERS"
-The following two tables define the action taken by the terminal when it
+Tables 4-1 and 4-2 define the action taken by the terminal when it
 receives C0 and C1 control characters. The VT240 does not recognize all
 C0 or C1 characters. Those not shown in either table are ignored. (No
 action is taken.)
 .
-.SS "C0 (ASCII) Control Characters Recognized"
+.TBL "4-1" "C0 (ASCII) Control Characters Recognized"
 .TS
 lB lB lB lBX
 l l l lX.
@@ -2035,7 +2053,7 @@ T}
 _
 .TE
 .
-.SS "C1 Control Characters Recognized"
+.TBL "4-2" "C1 Control Characters Recognized"
 .TS
 lB lB lB lB lBX
 lB lB lB lB lBX
@@ -2139,27 +2157,26 @@ _
 .TE
 .
 .P
-Table \fIC0 (ASCII) Control Characters Recognized\fR shows that SO
-(0/14) and SI (0/15) are also called LS1 and LS0, respectively. SO and
-SI (shift out and shift in) are the traditional ASCII names or
-mnemonics. LS1 and LS0 (lock shift G1 and lock shift G0) are the
-alternate names that are useful when dealing with the variety of
-character set mappings possible. LS1 and LS0 are the names used in this
-chapter.
+Table 4-1 shows that SO (0/14) and SI (0/15) are also called LS1 and
+LS0, respectively. SO and SI (shift out and shift in) are the
+traditional ASCII names or mnemonics. LS1 and LS0 (lock shift G1 and
+lock shift G0) are the alternate names that are useful when dealing with
+the variety of character set mappings possible. LS1 and LS0 are the
+names used in this chapter.
 .P
-Table \fIC1 Control Characters Recognized\fR shows the equivalent 7-bit
-code extension for each 8-bit C1 code. The code extensions require one
-more byte than the C1 codes. Chapter \fICHARACTER ENCODING\fR describes
-when to use the C1 codes and when to use 7-bit code extensions.
+Table 4-2 shows the equivalent 7-bit code extension for each 8-bit C1
+code. The code extensions require one more byte than the C1 codes.
+Chapter \fICHARACTER ENCODING\fR describes when to use the C1 codes and
+when to use 7-bit code extensions.
 .
 .SS "COMPATIBILITY LEVEL (DECSCL)"
 You can set the terminal to a particular level of operation for
 compatibility with an application. There are two possible levels, level
 1 (VT100 operation) and level 2 (VT200 operation). You can set the VT240
-(a level 2 terminal) for either level 1 or level 2. The following table
-shows the difference between these functional levels.
+(a level 2 terminal) for either level 1 or level 2. Table 4-3 shows the
+difference between these functional levels.
 .
-.SS "Differences in Level 1 - Level 2 Compatibility"
+.TBL "4-3" "Differences in Level 1 - Level 2 Compatibility"
 .TS
 lB lBX lB
 lB lBX lB
@@ -2228,35 +2245,31 @@ Sequence	Action
 9/11 3/6  3/1  2/2  7/0	T{
 Set terminal for level 1 compatibility (VT100 mode).
 T}
-.B "CSI  6    1    \[dq]    p"
-	\^
+\fBCSI  6    1    \[dq]    p\fR	\^
 
 9/11 3/6  3/2  2/2  7/0	T{
 Set terminal for level 2 compatibility (VT200 mode, 8-bit controls).
 T}
-.B "CSI  6    2    \[dq]    p"
-	\^
+\fBCSI  6    2    \[dq]    p\fR	\^
 
 9/11 3/6  3/2  3/11 3/0  2/2  7/0	T{
 Set terminal to level 2 (VT200 mode, 8-bit controls).
 T}
-.B "CSI  6    2    ;    0    \[dq]    p"
-	\^
+\fBCSI  6    2    ;    0    \[dq]    p\fR	\^
 .T&
 c lXT.
-or	\^
-	\^
+
+or
+
 .T&
 l lXT.
-9/11 3/6  3/2  3/11 3/2  2/2  7/0	\^
-.B "CSI  6    2    ;    2    \[dq]    p"
-	\^
+9/11 3/6  3/2  3/11 3/2  2/2  7/0
+\fBCSI  6    2    ;    2    \[dq]    p\fR
 
 9/11 3/6  3/2  3/11 3/1  2/2  7/0	T{
 Set terminal to level 2 (VT200 mode, 7-bit controls).
 T}
-.B "CSI  6    2    ;    1    \[dq]    p"
-	\^
+\fBCSI  6    2    ;    1    \[dq]    p\fR	\^
 .TE
 .
 .SS "CHARACTER SET SELECTION (SCS)"
@@ -2310,7 +2323,7 @@ default mapping by using the soft terminal reset sequence (DECSTR).
 The following sections describe all control functions for designating
 and invoking graphic character sets.
 .
-.SS "Designating Hard Character Sets"
+.SSS "Designating Hard Character Sets"
 You designate hard character sets (ASCII, DEC supplemental graphics, DEC
 special graphics, and national replacement character sets) as G0 through
 G3, using the following escape sequence formats.
@@ -2343,9 +2356,9 @@ character set you want to designate. The following table lists the
 available character sets and their associated final character.
 .P
 To designate a character set as any of the graphic sets (G0 through G3),
-you must include a final character in one of the escape sequences in the
-following table. For example, to designate the ASCII character set as
-the G0 graphic set you would use the following escape sequence.
+you must include a final character in one of the escape sequences in
+Table 4-4. For example, to designate the ASCII character set as the G0
+graphic set you would use the following escape sequence.
 .P
 .RS
 .EX
@@ -2365,7 +2378,7 @@ this escape sequence.
 Note that there is a definite pattern of escape sequences in the
 designation process.
 .
-.SS "Designating Hard Character Sets"
+.TBL "4-4" "Designating Hard Character Sets"
 .TS
 lB lB
 l l.
@@ -2428,7 +2441,7 @@ Swiss	3/11
 _
 .TE
 .
-.SS "Designating Soft (Down-Line-Loadable) Character Sets"
+.SSS "Designating Soft (Down-Line-Loadable) Character Sets"
 You can define a soft character set that may or may not replace one of
 the existing hard sets (ROM fonts). If you do replace a hard set, the
 replacement occurs for both the 80 and 132-column versions. A soft
@@ -2515,12 +2528,12 @@ set.
 T}
 .TE
 .
-.SS "Invoking Character Sets with Locking Shifts"
+.SSS "Invoking Character Sets with Locking Shifts"
 After you designate your character sets, you can invoke G0, G1, G2, or
 G3 into GL or GR. To invoke a set, you use the locking shift (LS)
-control functions, as shown in the following table.
+control functions, as shown in Table 4-5.
 .
-.SS "Invoking Character Sets with Single Shifts"
+.SSS "Invoking Character Sets with Single Shifts"
 After you designate your character sets, you can invoke G2 or G3 into GL
 for a single graphic character. To do this, you use the single shift
 (SS) control function described below.
@@ -2529,10 +2542,10 @@ All single shifts remain active for only the next single graphic
 character. The terminal returns to the previous character set after
 displaying a single graphic character.
 .
-.SS "Invoking Character Sets With Lock Shifts"
+.TBL "4-5" "Invoking Character Sets With Lock Shifts"
 .TS
-lB lB lB
-l l l.
+lB lB lBX
+l l lX.
 _
 Control Name	Coding	Function
 _
@@ -2546,7 +2559,7 @@ LS1R (lock shift G1, right)	1/11  7/14	T{
 Invoke G1 into GR (VT200 mode only). This sequence can cause software
 compatibility problems.
 T}
-	\fBESC    ~\fR	\^
+	\fBESC    \(ti\fR	\^
 
 LS2 (lock shift G2)	1/11  6/14	T{
 Invoke G2 into GL (VT200 mode only). This sequence can cause software
@@ -2617,7 +2630,7 @@ the C1 control state.
 .B These sequences are only supported in VT200 mode.
 .RE
 .
-.SS "Select 7-Bit C1 Control Transmission (S7C1T)"
+.SSS "Select 7-Bit C1 Control Transmission (S7C1T)"
 The following sequence converts all C1 codes returned to the application
 to be converted to their equivalent 7-bit code extensions.
 .P
@@ -2630,7 +2643,7 @@ to be converted to their equivalent 7-bit code extensions.
 .B NOTE:
 .B The S7C1T sequence is ignored in VT100 or VT52 mode.
 .RE
-.SS "Select 8-Bit C1 Control Transmission (S8C1T)
+.SSS "Select 8-Bit C1 Control Transmission (S8C1T)"
 The following sequence returns C1 codes to the application without
 converting them to their equivalent 7-bit code extensions.
 .P
@@ -2642,9 +2655,9 @@ converting them to their equivalent 7-bit code extensions.
 .RE
 .
 .SS "TERMINAL MODES"
-A mode is one of several operating states used by the terminal. The
-following table lists the selectable modes and their set/reset control
-sequences. The following section describes these modes.
+A mode is one of several operating states used by the terminal. Table
+4-6 lists the selectable modes and their set/reset control sequences.
+The following section describes these modes.
 .P
 Each mode has an identifying name (mnemonic). You can set or reset modes
 individually or in strings, using the set mode (SM) or reset mode (RM)
@@ -2660,7 +2673,7 @@ sequence introducer.
 You can also select these modes from the keyboard by using set-up
 screens.
 .
-.SS "Set Mode (SM)"
+.SSS "Set Mode (SM)"
 The set mode sequence for ANSI modes is as follows.
 .P
 .RS
@@ -2680,11 +2693,11 @@ The set mode sequence for Digital private modes is as follows.
 .RE
 .P
 You use these sequences to set the ANSI and Digital private modes,
-individually or in strings. The following tables list the Ps parameters.
+individually or in strings. Tables 4-7 and 4-8 list the Ps parameters.
 You cannot use ANSI modes and Digital private modes in the same SM
 string.
 .
-.SS "Reset Mode (RM)"
+.SSS "Reset Mode (RM)"
 The reset mode sequence for ANSI modes is as follows.
 .P
 .RS
@@ -2704,10 +2717,10 @@ The reset mode sequence for Digital private modes is as follows.
 .RE
 .P
 You use these commands to reset the ANSI and Digital private modes,
-individually or in strings. The following tables list the Ps parameters.
+individually or in strings. Tables 4-7 and 4-8 list the Ps parameters.
 You cannot use ANSI modes and Digital modes in the same RM string.
 .
-.SS "Selectable Modes Summary"
+.TBL "4-6" "Selectable Modes Summary"
 .TS
 lB lB lB lB
 l l l l.
@@ -2789,7 +2802,7 @@ The last character of each sequence is lowercase L (6/12).
 .IP \[u253C] 2
 User preference feature
 .
-.SS "ANSI-Standardized Modes"
+.TBL "4-7" "ANSI-Standardized Modes"
 .TS
 lB lB lB
 l l l.
@@ -2808,7 +2821,7 @@ Line feed/new line	LNM	20   (3/2 3/0)
 _
 .TE
 .
-.SS "ANSI-Compatible DEC Private Modes"
+.TBL "4-8" "ANSI-Compatible DEC Private Modes"
 .TS
 lB lB lB
 l l l.
@@ -2855,7 +2868,7 @@ Graphics rotated print	DECGRPM	47   (3/4 3/7)
 _
 .TE
 .
-.SS "Keyboard Action Mode (KAM)"
+.SSS "Keyboard Action Mode (KAM)"
 Keyboard action mode lets your program lock and unlock the keyboard.
 When the keyboard is locked, it cannot send codes to the program. To
 alert the operator, the terminal turns on the Wait indicator and
@@ -2884,7 +2897,7 @@ T}
 	\fBCSI    2    l\fR	\^
 .TE
 .
-.SS "Insert/Replace Mode (IRM)"
+.SSS "Insert/Replace Mode (IRM)"
 The terminal displays received characters at the cursor position.
 Insert/replace mode determines how the terminal adds characters to the
 screen. Insert mode displays the character and moves previously
@@ -2911,7 +2924,7 @@ T}
 	\fBCSI    4    l\fR	\^
 .TE
 .
-.SS "Send/Receive Mode (SRM)"
+.SSS "Send/Receive Mode (SRM)"
 Send/receive mode turns local echo on or off. When send/receive mode is
 reset(local echo on), every character sent from the keyboard
 automatically appears on the screen. Therefore, the host does not have
@@ -2940,7 +2953,7 @@ T}
 	\fBCSI   1   2   l\fR	\^
 .TE
 .
-.SS "Line Feed/New Line Mode (LNM)"
+.SSS "Line Feed/New Line Mode (LNM)"
 Line feed/new line mode selects the control character(s) sent to the
 application by the \fBReturn\fR and \fBEnter\fR keys. \fBEnter\fR sends
 the same code as \fBReturn\fR only when the auxiliary keypad is in
@@ -2975,7 +2988,7 @@ T}
 	\fBCSI   2   0   l\fR	\^
 .TE
 .
-.SS "Text Cursor Enable Mode (DECTCEM)"
+.SSS "Text Cursor Enable Mode (DECTCEM)"
 Text cursor enable mode determines if the text cursor is visible.
 .P
 You can set and reset this mode as follows.
@@ -2996,7 +3009,7 @@ T}
 	\fBCSI   ?    2   5   l\fR	\^
 .TE
 .
-.SS "Cursor Key Mode (DECCKM)"
+.SSS "Cursor Key Mode (DECCKM)"
 Cursor key mode determines the characters sent by the cursor keys.
 .P
 You can set and reset this mode as follows.
@@ -3017,7 +3030,7 @@ T}
 	\fBCSI   ?    1   l\fR	\^
 .TE
 .
-.SS "ANSI/VT52 Mode (DECANM)"
+.SSS "ANSI/VT52 Mode (DECANM)"
 In ANSI mode, reset selects VT52 compatibility mode. In VT52 mode, the
 terminal responds like a VT52 terminal to private Digital sequences. The
 reset state of this mode sets the terminal to the VT52 mode. There is no
@@ -3034,7 +3047,7 @@ T}
 	\fBCSI   ?    2   l\fR	\^
 .TE
 .
-.SS "Column Mode (DECCOLM)"
+.SSS "Column Mode (DECCOLM)"
 Column mode selects the number of columns per line (80 or 132) on the
 screen. The screen can display 24 lines of text with either selection.
 .P
@@ -3063,7 +3076,7 @@ T}
 	\fBCSI   ?    3   l\fR	\^
 .TE
 .
-.SS "Scrolling Mode (DECSCLM)"
+.SSS "Scrolling Mode (DECSCLM)"
 Scrolling is the upward or downward movement of existing lines on the
 screen. There are two methods of scrolling, jump scroll and smooth
 scroll (6 lines per second).
@@ -3093,7 +3106,7 @@ T}
 	\fBCSI   ?    4   l\fR	\^
 .TE
 .
-.SS "Screen Mode (DECSCNM)"
+.SSS "Screen Mode (DECSCNM)"
 Screen mode selects either a dark or light (reverse) display background
 on the screen.
 .P
@@ -3120,7 +3133,7 @@ T}
 	\fBCSI   ?    5   l\fR	\^
 .TE
 .
-.SS "Origin Mode (DECOM)"
+.SSS "Origin Mode (DECOM)"
 Origin mode allows cursor addressing relative to a user-defined origin.
 This mode resets when the terminal is powered up or reset. It does not
 affect the erase in display (ED) function.
@@ -3147,7 +3160,7 @@ T}
 	\fBCSI   ?    6   l\fR	\^
 .TE
 .
-.SS "Auto Wrap Mode (DECAWM)"
+.SSS "Auto Wrap Mode (DECAWM)"
 This mode selects where received graphic characters appear when the
 cursor is at the right margin.
 .P
@@ -3178,7 +3191,7 @@ T}
 	\fBCSI   ?    7   l\fR	\^
 .TE
 .
-.SS "Auto Repeat (DECARM)"
+.SSS "Auto Repeat (DECARM)"
 Auto repeat mode selects automatic key repeating. When auto repeat mode
 is set, a key pressed for more than 0.5 seconds automatically repeats
 the transmission of the character until the key is released. The
@@ -3219,7 +3232,7 @@ T}
 	\fBCSI   ?    8   l\fR	\^
 .TE
 .
-.SS "Print Form Feed Mode (DECPFF)"
+.SSS "Print Form Feed Mode (DECPFF)"
 This mode determined whether or not the terminal sends a print
 termination character after a screen print. The form feed control
 character (FF) serves as the print termination character.
@@ -3244,7 +3257,7 @@ T}
 	\fBCSI   ?    1   8   l\fR	\^
 .TE
 .
-.SS "Print Extent Mode (DECPEX)"
+.SSS "Print Extent Mode (DECPEX)"
 Print extent mode selects the full screen or the scrolling region to
 print during a print screen operation.
 .P
@@ -3266,7 +3279,7 @@ T}
 	\fBCSI   ?    1   9   l\fR	\^
 .TE
 .
-.SS "Keypad Mode (DECKPAM/DECKPNM)"
+.SSS "Keypad Mode (DECKPAM/DECKPNM)"
 The auxiliary keypad generates either numeric characters or control
 functions. Selecting application or numeric keypad mode determines the
 type of characters.
@@ -3298,7 +3311,7 @@ T}
 (DECKPNM)	\fBESC   >\fR	\^
 .TE
 .
-.SS "Character Set Mode (DECNRCM)"
+.SSS "Character Set Mode (DECNRCM)"
 Character set mode determines whether the terminal uses national
 replacement character sets or the DEC multinational character set.
 .P
@@ -3323,7 +3336,7 @@ T}
 	\fBCSI   ?    4   2   l\fR	\^
 .TE
 .
-.SS "Tektronix 4010/4014 Mode (DECTEK)"
+.SSS "Tektronix 4010/4014 Mode (DECTEK)"
 Tektronix 4010/4014 mode determines whether the terminal operates in
 4010/4014 mode or an ANSI mode.
 .P
@@ -3345,7 +3358,7 @@ T}
 	\fBCSI   ?    3   8   l\fR	\^
 .TE
 .
-.SS "Graphics Expanded Print Mode (DECGEPM)"
+.SSS "Graphics Expanded Print Mode (DECGEPM)"
 Graphics expanded print mode determines whether the terminal generates a
 small or large (expanded) graphics image. The small image fits on 8-1/2
 inch wide paper, the expanded image does not.
@@ -3370,7 +3383,7 @@ T}
 	\fBCSI   ?    4   3   l\fR	\^
 .TE
 .
-.SS "Graphics Print Color Mode (DECGPCM)"
+.SSS "Graphics Print Color Mode (DECGPCM)"
 Graphics print color mode determines whether the graphics image on the
 screen is printed in color or black and white.
 .P
@@ -3393,7 +3406,7 @@ T}
 	\fBCSI   ?    4   4   l\fR	\^
 .TE
 .
-.SS "Graphics Print Color Syntax (DECGPCS)"
+.SSS "Graphics Print Color Syntax (DECGPCS)"
 Graphics print color syntax selects which format color specifiers the
 terminal uses in print color mode. There are two format color
 specifiers, HLS (hue/lightness/saturation) and RGB (red/green/blue).
@@ -3418,7 +3431,7 @@ T}
 	\fBCSI   ?    4   5   l\fR	\^
 .TE
 .
-.SS "Graphics Print Background Mode (DECGPBM)"
+.SSS "Graphics Print Background Mode (DECGPBM)"
 Graphics print background mode determines whether the terminal sends
 background regions for a graphics print screen operation (in print color
 mode).
@@ -3441,7 +3454,7 @@ T}
 	\fBCSI   ?    4   6   l\fR	\^
 .TE
 .
-.SS "Graphics Rotated Print Mode (DECGRPM)"
+.SSS "Graphics Rotated Print Mode (DECGRPM)"
 Graphics rotated print mode determines whether the terminal generates a
 compressed or rotated graphics image.
 .P
@@ -3624,7 +3637,7 @@ You can also designate characters to be erasable or not erasable using
 the select character attribute (DECSCA) sequence. DECSCA affects erase
 sequences.
 .
-.SS "Select Graphic Rendition (SGR)"
+.SSS "Select Graphic Rendition (SGR)"
 You can select one or more character renditions at a time using the
 following format.
 .P
@@ -3696,7 +3709,7 @@ Ps	Action
  \fB2   7\fR
 .TE
 .
-.SS "Select Character Attributes (DECSCA)"
+.SSS "Select Character Attributes (DECSCA)"
 You can select all characters to be erasable or not erasable using the
 following format. (See the \(lqErasing\(rq section in this chapter.)
 .P
@@ -3754,7 +3767,7 @@ by using the following sequences.
 .B single-width.
 .RE
 .P
-.SS "Double-Height Line (DECDHL)"
+.SSS "Double-Height Line (DECDHL)"
 These sequences make the line with the cursor the top or bottom half of
 a double-height, double-width, line. You must use these sequences in
 pairs on adjacent lines. The same character must be used on both lines
@@ -3772,7 +3785,7 @@ Top Half	Bottom Half
 .TE
 .RE
 .
-.SS "Single-Width Line (DECSWL)"
+.SSS "Single-Width Line (DECSWL)"
 The DECSWL sequence makes the line with the cursor single-width,
 single-height. This is the line attribute for all new lines on the
 screen.
@@ -3784,7 +3797,7 @@ screen.
 .EE
 .RE
 .
-.SS "Double-Width Line (DECDWL)"
+.SSS "Double-Width Line (DECDWL)"
 The DECDWL sequence makes the line with the cursor double-width,
 single-height. If the line was previously single-width, single-height,
 all characters to the right of center screen are lost.
@@ -3872,7 +3885,7 @@ You can erase characters as follows.
 .P
 .TS
 lB lB lBX
-lT lT lTX.
+lT lT lX.
 Name	Sequence	Action
 
 T{
@@ -3945,8 +3958,8 @@ attributes (SGR).
 T}
 \^	\fBCSI   ?    K\fR	\^
 \^
-\^	9/11 3/15 3/0 4/11	Same as above.
-\^	\fBCSI   ?    0   K\fR	\^
+	9/11 3/15 3/0 4/11	Same as above.
+	\fBCSI   ?    0   K\fR	\^
 
 	9/11 3/15 3/1 4/11	T{
 Erases all erasable characters (DECSCA) from the beginning of the line
@@ -4001,7 +4014,7 @@ be at least one less than the number of the bottom margin.
 You can select the top and bottom margins of the scrolling region as
 follows.
 .
-.SS "Set Top and Bottom Margins (DECSTBM)"
+.SSS "Set Top and Bottom Margins (DECSTBM)"
 This sequence selects top and bottom margins defining the scrolling
 region.
 .P
@@ -4361,7 +4374,7 @@ The
 is ST (9/12). This is an 8-bit control character that you can also
 express as ESC \(rs (1/11, 5/12) when coding for a 7-bit environment.
 .
-.SS "Things to Keep in Mind When Loading Keys"
+.SSS "Things to Keep in Mind When Loading Keys"
 Here are some general guidelines you should keep in mind when loading
 the keys.
 .bP
@@ -4391,7 +4404,7 @@ already successfully loaded fraction, and sends the rest of the DECUDK
 sequence to the screen. An invalid DCS hex pair in a key definition
 string causes an aborted load.
 .
-.SS "Examples and Recommendations for Using DECUDK"
+.SSS "Examples and Recommendations for Using DECUDK"
 To clear keys, send the following sequence.
 .P
 .RS
@@ -4457,10 +4470,10 @@ DRCS buffer by using a DECDLD device control string.
 .RS
 .B NOTE:
 .B This character set is not loaded into nonvolatile RAM So, when the
-terminal is powered off, characters are lost.
+.B terminal is powered off, characters are lost.
 .RE
 .
-.SS "Comparing a DRCS Cell and Normal Character Cell Size"
+.FIG "4-4" "Comparing a DRCS Cell and Normal Character Cell Size"
 .EX
           |    132 COLUMN    |       80 COLUMN      |
 ----------+------------------+----------------------+
@@ -4494,14 +4507,14 @@ CELL SIZE |  |  o o o o o    |  |  o o o o o o o    |
 ----------+------------------+----------------------+
 .EE
 .
-.SS "Designing a Character Set"
-The previous figure compares DRCS cell size and the terminal's normal
-character cell size in pixels for 80 and 132 columns. Note that the
-maximum number of pixels in the DRCS cell is 80 (8 x 10) for an
-80-column font character. Note also, that the terminal's character cell
-size is less than the DRCS cell size. Since the terminal ignores
-characters defined beyond the DRCS cell size, you must design your
-characters to fit the DRCS cell size for the particular column mode.
+.SSS "Designing a Character Set"
+Figure 4-4 compares DRCS cell size and the terminal's normal character
+cell size in pixels for 80 and 132 columns. Note that the maximum number
+of pixels in the DRCS cell is 80 (8 x 10) for an 80-column font
+character. Note also, that the terminal's character cell size is less
+than the DRCS cell size. Since the terminal ignores characters defined
+beyond the DRCS cell size, you must design your characters to fit the
+DRCS cell size for the particular column mode.
 .P
 Each pixel in a character font is represented by a bit with a binary
 value of 1 (on) or 0 (off). One (1) specifies foreground (pixel on) and
@@ -4512,12 +4525,12 @@ To do this, you follow a four-step process.
 .IP 1. 4
 Use the 80-column terminal character sell size format and designate
 which pixels will be on and which pixels will be off. Your design may
-look like the following figure.
+look like Figure 4-5.
 .IP 2. 4
 After you establish what your DRCS character A will look like, divide
 the pixels of the DRCS character cell into columns of 6 bits each, using
-the format shown in the next figure. The column numbers here designate
-the order in which the columns are sent to the terminal.
+the format shown in Figure 4-6. The column numbers here designate the
+order in which the columns are sent to the terminal.
 .IP "" 4
 Each column is now represented as a vertical 4 x 6 pixel matrix called a
 \fIsixel\fR. The least significant bit is at the top, and the most
@@ -4529,24 +4542,24 @@ character cell have only 4 bits each. (The two highest order bits, 5 and
 After you divide your DRCS character into six-pixel columns (sixels),
 you then convert the binary values of each column to its equivalent
 character. Because column codes are restricted to characters in the
-range of ? (octal 077) to ~ (octal 176), you must add an offset of octal
-077 to each column octal code. Thus, binary value 000000 is converted to
-octal 077 (octal 0 + octal 77); binary 110101 is converted to octal 164
-(octal 65 + octal 077); and binary 111111 is converted to octal 176
-(octal 077 + 077).
+range of ? (octal 077) to \(ti (octal 176), you must add an offset of
+octal 077 to each column octal code. Thus, binary value 000000 is
+converted to octal 077 (octal 0 + octal 77); binary 110101 is converted
+to octal 164 (octal 65 + octal 077); and binary 111111 is converted to
+octal 176 (octal 077 + 077).
 .IP 4. 4
 After you convert the binary column codes to octal values (using the
 offset), convert the octal value for each column to its equivalent
 character by using the ASCII table in Chapter \fICHARACTER ENCODING\fR.
-The following figure provides this conversion procedure for our example
-DRCS character A.
+.\" Figure 4-7 provides this conversion procedure for our example DRCS
+.\" character A.
 .P
 Use this procedure to design each DRCS character you want. You can then
 down-line-load your DRCS character with the DECDLD device control string
 described in the next section. The DRCS characters consist of a string
 or strings of characters.
 .
-.SS "Example of an 80-Column Font \(lqA\(rq Character"
+.FIG "4-5" "Example of an 80-Column Font \(lqA\(rq Character"
 .EX
     |<---- 7 ---->|
  ---
@@ -4563,7 +4576,7 @@ or strings of characters.
  ---
 .EE
 .
-.SS "Example of an 80-Column Font \(lqA\(rq Character Divided into Columns (6 bits per column)"
+.FIG "4-6" "Example of an 80-Column Font \(lqA\(rq Character Divided into Columns (6 bits per column)"
 .EX
      1 2 3 4 5 6 7 ----------
  b0  . . . . . . .      ^
@@ -4582,7 +4595,7 @@ or strings of characters.
 .
 .\" TODO: Figure 4-7
 .
-.SS "Down-Line-Loading DRCS Characters"
+.SSS "Down-Line-Loading DRCS Characters"
 You can down-line-load your DRCS character set with the following DECDLD
 device control string format.
 .P
@@ -4600,11 +4613,11 @@ control character that you can also express as ESC P (1/11, 5/0) when
 coding for a 7-bit environment.
 .P
 \fIPfn;Pcn;Pe;PcmsPw;Pt\fR are parameter characters, separated by
-semicolons. The following table describes these parameters. The table
-afterwards describes valid combinations for Pcms, Pw, and Pt. (Invalid
-combinations cause the DECDLD to be ignored.)
+semicolons. Table 4-9 describes these parameters. Table 4-10 describes
+valid combinations for Pcms, Pw, and Pt. (Invalid combinations cause the
+DECDLD to be ignored.)
 .
-.SS "DECDLD Parameter Characters"
+.TBL "4-9" "DECDLD Parameter Characters"
 .TS
 lB lB lBX
 l l lX.
@@ -4696,7 +4709,7 @@ T}
 _
 .TE
 .
-.SS "Valid Pcms, Pw, Pt Combinations"
+.TBL "4-10" "Valid Pcms, Pw, Pt Combinations"
 .TS
 lB lB lB lBX
 l l l lX.
@@ -4754,7 +4767,7 @@ and the second S....S represents the lower columns of the DRCS.
 you can also express as ESC \(rs (1/11, 5/12) when coding for a 7-bit
 environment.
 .
-.SS "DECDLD Example"
+.SSS "DECDLD Example"
 Suppose you want to load a character set starting with the character A,
 designed in the previous paragraphs. To do this, you could use the
 following device control string.
@@ -4803,7 +4816,7 @@ beginning of another DRCS character to be loaded.
 .I ST
 indicates the end of the device control string.
 .
-.SS "Clearing a Down-Line-Loaded Character Set"
+.SSS "Clearing a Down-Line-Loaded Character Set"
 You can clear a character set that you have down-line-loaded by using
 the following DECDLD control sequence.
 .P
@@ -4828,7 +4841,7 @@ computer. These reports provide identification (type of terminal),
 cursor position, and terminal operating status. There are two categories
 of reports, device attributes (DA) and device status reports (DSR).
 .
-.SS "Device Attributes (DA)"
+.SSS "Device Attributes (DA)"
 There are two DA exchanges (dialogues) between the host computer and the
 VT240, primary DA and secondary DA.
 .
@@ -4958,7 +4971,7 @@ CSI>2;10;0c = VT240 version 1.0, no options.
 .B printer, which may or may not respond.
 .RE
 .
-.SS "Device Status Report (DSR)"
+.SSS "Device Status Report (DSR)"
 In a DSR exchange, the host computer asks for the general operating
 status of the terminal and/or printer. If the terminal is in printer
 controller mode, the printer receives the DSR request but may or may not
@@ -5012,7 +5025,7 @@ VT240 to host (CPR response)
 T}	T{
 .B CSI Pv; Ph R
 T}	T{
-\(lqMY cursor is positioned at ___ (Pv); ___ (Ph).\(rq
+\(lqMy cursor is positioned at ___ (Pv); ___ (Ph).\(rq
 
 .IL "Pv =" 5
 vertical position (row)
@@ -5092,8 +5105,8 @@ T}
 A typical DSR exchange is as follows.
 .P
 .TS
-lB lB lB s s sX
-l l l s s sX.
+lB lB lB s sX
+l l l s sX.
 Communication	Sequence	Meaning
 
 T{
@@ -5135,7 +5148,7 @@ l l l l lX.
 Sent by a terminal that for some reason cannot determine its keyboard
 language. The VT240 will never send this response.
 .
-.SS "Identification (DECID)"
+.SSS "Identification (DECID)"
 The DECID sequence causes the terminal to send a primary DA response
 sequence. Digital does not recommend using DECID. You should use the
 primary DA request for this purpose.
@@ -5266,7 +5279,7 @@ sequence for a 7-bit environment as follows.
 T}
 .TE
 .
-.SS "Sixel Format For Graphics"
+.SSS "Sixel Format For Graphics"
 The VT240 uses a device control string format for sending and receiving
 graphics bit map images.
 .P
@@ -5313,13 +5326,13 @@ q indicates that this control string is a sixel command.
 .P
 The
 .I sixel data character
-consists of characters in the range of ? (octal 077) to ~ (octal 176).
-Each character represents six individual bits of data. Each character
-represents a binary value equal to the character value minus octal 077.
-Thus, ? (octal 077) represents the binary value 000000; t (octal 164)
-represents binary value 110101; and ~ (octal 176) represents binary
-value 111111. The bits are represented as a vertical 1 x 6 pixel matrix
-(a sixel), with the least significant bit at the top.
+consists of characters in the range of ? (octal 077) to \(ti (octal
+176).  Each character represents six individual bits of data. Each
+character represents a binary value equal to the character value minus
+octal 077. Thus, ? (octal 077) represents the binary value 000000; t
+(octal 164) represents binary value 110101; and \(ti (octal 176)
+represents binary value 111111. The bits are represented as a vertical 1
+x 6 pixel matrix (a sixel), with the least significant bit at the top.
 .P
 .RS
 .B NOTE:
@@ -5333,13 +5346,13 @@ sequence for a 7-bit environment (ESC \(rs). Digital recommends using
 ESC \(rs.
 .P
 The sixel control string uses the following special control characters
-outside the range of ? (octal 077) to ~ (octal 176).
+outside the range of ? (octal 077) to \(ti (octal 176).
 .bP
 The graphics repeat introducer (!, octal 041) begins processing a repeat
 sequence. The repeat count consists of decimal digits 1 through 9 (octal
 060 to octal 071), which represent a decimal number. The next character
-following the repeat count in the range of ? through ~ is repeated that
-many times.
+following the repeat count in the range of ? through \(ti is repeated
+that many times.
 .bP
 The color introducer (#, octal 043) indicates a color selection
 sequence. This character is followed by a color number and optional
@@ -5378,14 +5391,14 @@ Pu is the universal color coordinate system.
 .br
 Px, Py, and Pz are the color coordinates in the specified system.
 
-The following table summarizes the definitions and possible values for
-each of the color specifier parameters.
+Table 4-11 summarizes the definitions and possible values for each of
+the color specifier parameters.
 .IP 2. 4
 If the color introducer is followed by a single color number, the only
 purpose of the color introducer is to select the color for the following
 sixel data.
 .P
-.SS "Color Specifier"
+.TBL "4-11" "Color Specifier"
 .TS
 lB lB lBX
 l l lX.
@@ -5437,7 +5450,7 @@ There are two terminal reset escape sequences. One causes a soft
 terminal reset (DECSTR), and the other causes a hard terminal reset
 (RIS).
 .
-.SS "Soft Terminal Reset (DECSTR)"
+.SSS "Soft Terminal Reset (DECSTR)"
 You can invoke DECSTR (soft terminal reset) from the keyboard by
 selecting \(lqReset Terminal\(rq in the Set-Up Directory screen. It can
 be invoked directly from the host computer via the DECSTR sequence if
@@ -5446,7 +5459,7 @@ mode, the escape sequence is ignored.) It can also be invoked directly
 via DECSCL (ignored in VT52 mode).
 .P
 The DECSTR sequence sets the terminal to the power-up default states
-listed in the following table.
+listed in Table 4-12.
 .P
 The DECSTR escape sequence is as follows:
 .P
@@ -5457,7 +5470,7 @@ The DECSTR escape sequence is as follows:
 .EE
 .RE
 .
-.SS "Soft Terminal Reset (DECSTR) States"
+.TBL "4-12" "Soft Terminal Reset (DECSTR) States"
 .TS
 lB s lB lB
 l s l l.
@@ -5553,7 +5566,7 @@ _
 .IP * 2
 Applies only to later restore cursor commands (DECRC).
 .
-.SS "Hard Terminal Reset (RIS)"
+.SSS "Hard Terminal Reset (RIS)"
 .RS
 .B NOTE:
 .B Use this sequence with caution. Parity and baud rate are restored
@@ -5607,7 +5620,7 @@ This section provides the sequences used to invoke the tests and the
 alignment patterns. For detailed information, see the
 .IR "VT240 Pocket Service Guide" .
 .
-.SS "Tests (DECTST)"
+.SSS "Tests (DECTST)"
 The sequence format for invoking terminal tests is as follows.
 .P
 .RS
@@ -5654,7 +5667,7 @@ T}
 16 and up	Not used
 .TE
 .
-.SS "Adjustments (DECALN)"
+.SSS "Adjustments (DECALN)"
 The terminal has a screen alignment pattern that service personnel use
 to adjust the screen. You can display the screen alignment pattern with
 the DECALN sequence.
@@ -5674,10 +5687,10 @@ for the VT52 terminal. In VT52 mode, all C0 control characters are
 allowed, although some are ignored. No C1 control characters or ANSI
 mode control functions are allowed. The G0 character set is set to the
 default character set (ASCII or UK). The user-defined keys are disabled.
-The following table defines the VT52 mode escape sequences. Chapter
-\fITRANSMITTED CODES\fR defines the VT52 auxiliary keypad codes.
+Table 4-13 defines the VT52 mode escape sequences. Table 3-3 defines the
+VT52 auxiliary keypad codes.
 .
-.SS "VT52 Escape Sequences"
+.TBL "4-13" "VT52 Escape Sequences"
 .TS
 lB lBX
 l lX.
@@ -5721,3 +5734,6 @@ EK-VT240-RM-002
 .
 .SH "SEE ALSO"
 .MR vt240 1
+.
+.\" Another hack to get rid of the page size in nroff mode
+.if n .pl \n[nl]u
