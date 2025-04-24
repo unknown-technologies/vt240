@@ -646,7 +646,6 @@ GL or GR, as described in Chapter \fIRECEIVED CODES\fR. This feature is
 available only in VT200 mode.
 .
 .TBL "2-4" "DEC Special Graphics Character Set"
-.P
 .TS
 c c cB cB cB cB cB cB cB cB
 c cB c c c c c c c c.
@@ -5300,7 +5299,7 @@ expand;
 l l l l l l l
 lB lB lB lB lB lB lB
 l l l l l l l.
-9/0		3s11		7/1		9/12
+9/0		3/11		7/1		9/12
 DCS	Pn	;	Pn	q	s....s	ST
 
 Control	Parameter	Separ-	Parameter	Final	Sixel	Control
@@ -5712,7 +5711,7 @@ ESC Z\[u253C]	Identify.
 ESC =	Enter alternate keypad mode.
 ESC >	Exit alternate keypad mode.
 ESC <	Enter ANSI mode (VT100 mode).
-ESC ^	Enter auto print mode.
+ESC \(ha	Enter auto print mode.
 ESC _	Exit auto print mode.
 ESC W	Enter printer controller mode.
 ESC X	Exit printer controller mode.
@@ -5726,14 +5725,15 @@ character codes and are the desired settings plus 37 (octal).
 .IP \[u253C] 2
 The response to ESC Z in VT52 mode is ESC/Z.
 .
-.SH "AUTHOR"
+.SH "NOTE"
 This man-page was transferred from the hardcopy DEC manual
 EK-VT240-RM-002
 .I VT240 Series Programmer Reference Manual
 (2nd Edition, October 1984).
 .
 .SH "SEE ALSO"
-.MR vt240 1
+.MR vt240 1 ,
+.MR vt240_pg 7
 .
 .\" Another hack to get rid of the page size in nroff mode
-.if n .pl \n[nl]u
+.if n .pl (\n[nl]u+2)

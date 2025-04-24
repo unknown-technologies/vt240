@@ -1,0 +1,3065 @@
+.\" vim:set tw=72 cc=72 spell spelllang=en:
+.\"
+.\" FIXME: This is an ugly hack to avoid strange space in tables caused
+.\" by invisible page breaks.
+.\" The hack sets the page size to "very large"
+.if n .pl 32767u
+.
+.\" Bulleted paragraph
+.de bP
+.  ie n  .IP \(bu 4
+.  el    .IP \(bu 2
+..
+.
+.\" TODO: this is ultra hacky, but it works ... at least for now
+.\" The TL/IL/BPC macros are used for tagged/indented lines instead of
+.\" paragraphs. This means there is *no* paragraph break between such
+.\" lines. It is intended for bullet point lists without empty lines
+.\" in-between.
+.de1 TL
+.\".  an-break-paragraph
+.  if \\n[.$] .nr an-prevailing-indent (n;\\$1)
+.  itc 1 an-input-trap
+.  in 0
+.  if !\\n[an-is-in-diversion] \{\
+.    ll -\\n[an-margin]u
+.    di an-div
+.    na
+.  \}
+.  nr an-is-in-diversion 1
+..
+.de1 IL
+.\".  an-break-paragraph
+.  ie !\\n[.$] \{\
+.    ne (1v + 1u)
+.    in (\\n[an-margin]u + \\n[an-prevailing-indent]u)
+.  \}
+.  el \{\
+.    ie (\\n[.$] > 1) .TL "\\$2"
+.    el               .TL
+.    nop \&\\$1
+.  \}
+..
+.de BPC
+.IL \(bu 2
+.na
+\\$1
+.br
+.ad
+..
+.
+.TH VT240_PG 7 "April 2025" "unknown technologies"
+.
+.SH NAME
+.
+VT240 Series Programmer Pocket Guide, 1st Edition (September 1983)
+.P
+This Pocket Guide provides a summary of the information contained in the
+VT240 Programmer's Reference Manual EK-VT240-RM which can be ordered
+from DIGITAL. It is provided for use by people with a knowledge of
+computer programming to access the VT240 features.
+.
+.SH "CHARACTER ENCODING"
+.
+.SS "7-Bit ASCII Code Table"
+.TS
+c c cB cB cB cB cB cB cB cB
+c cB c c c c c c c c.
+	COLUMN	0	1	2	3	4	5	6	7
+ROW	BITS	000	001	010	011	100	101	110	111
+_
+.T&
+cB c c c c c c c c c.
+0	0000	NUL	DLE	SP	0	@	P	\`	p
+1	0001	SOH	DC1	!	1	A	Q	a	q
+2	0010	STX	DC2	\(dq	2	B	R	b	r
+3	0011	ETX	DC3	\(sh	3	C	S	c	s
+4	0100	EOT	DC4	\(Do	4	D	T	d	t
+5	0101	ENQ	NAK	%	5	E	U	e	u
+6	0110	ACK	SYN	&	6	F	V	f	v
+7	0111	BEL	ETB	\(aq	7	G	W	g	w
+8	1000	BS	CAN	(	8	H	X	h	x
+9	1001	HT	EM	)	9	I	Y	i	y
+10	1010	LF	SUB	*	:	J	Z	j	z
+11	1011	VT	ESC	+	;	K	[	k	{
+12	1100	FF	FS	,	<	L	\(rs	l	|
+13	1101	CR	GS	\-	\&=	M	]	m	}
+14	1110	SO	RS	.	>	N	\(ha	n	\(ti
+15	1111	SI	US	/	?	O	\&_	o	DEL
+.TE
+.
+.SS "8-Bit Code Table"
+.TS
+expand nowarn tab(@);
+c cB cB cB cB cB cB cB cB cB cB cB cB cB cB cB cB
+cB c c c c c c c c c c c c c c c c.
+@00@01@02@03@04@05@06@07@08@09@10@11@12@13@14@15
+00@NUL@DLE@SP@@@@@@@DCS@///@@@@@
+01@SOH@DC1@@@@@@@@PU1@@@@@@
+02@STX@DC2@@@@@@@@PU2@@@@@@
+03@ETX@DC3@@@@@@@@STS@@@@@@
+04@EOT@DC4@@@@@@@IND@CCH@@@@@@
+05@ENQ@NAK@@@@@@@NEL@MW@@@@@@
+06@ACK@SYN@@@@@@@SSA@SPA@@@@@@
+07@BEL@ETB@@@@@@@ESA@EPA@@@@@@
+08@BS@CAN@@@@@@@HTS@@@@@@@
+09@HT@EM@@@@@@@HTJ@@@@@@@
+10@LF@SUB@@@@@@@VTS@@@@@@@
+11@VT@ESC@@@@@@@PLD@CSI@@@@@@
+12@FF@FS@@@@@@@PLU@ST@@@@@@
+13@CR@GS@@@@@@@RI@OSC@@@@@@
+14@SO@RS@@@@@@@SS2@PM@@@@@@
+15@SI@US@@@@@@DEL@SS3@APC@@@@@@///
+.TE
+.
+.SS "DEC Multinational Character Set (C0 and GL Codes)"
+.TS
+c c cB cB cB cB cB cB cB cB
+c cB c c c c c c c c.
+	COLUMN	0	1	2	3	4	5	6	7
+ROW	BITS	0000	0001	0010	0011	0100	0101	0110	0111
+_
+.T&
+cB c c c c c c c c c.
+0	0000	NUL	DLE	SP	0	@	P	\`	p
+1	0001	SOH	DC1	!	1	A	Q	a	q
+2	0010	STX	DC2	\(dq	2	B	R	b	r
+3	0011	ETX	DC3	\(sh	3	C	S	c	s
+4	0100	EOT	DC4	\(Do	4	D	T	d	t
+5	0101	ENQ	NAK	%	5	E	U	e	u
+6	0110	ACK	SYN	&	6	F	V	f	v
+7	0111	BEL	ETB	\(aq	7	G	W	g	w
+8	1000	BS	CAN	(	8	H	X	h	x
+9	1001	HT	EM	)	9	I	Y	i	y
+10	1010	LF	SUB	*	:	J	Z	j	z
+11	1011	VT	ESC	+	;	K	[	k	{
+12	1100	FF	FS	,	<	L	\(rs	l	|
+13	1101	CR	GS	\-	\&=	M	]	m	}
+14	1110	SO	RS	.	>	N	\(ha	n	\(ti
+15	1111	SI	US	/	?	O	\&_	o	DEL
+.TE
+.
+.SS "DEC Multinational Character Set (C1 and GR Codes)"
+.TS
+c c cB cB cB cB cB cB cB cB
+c cB c c c c c c c c.
+	COLUMN	8	9	10	11	12	13	14	15
+ROW	BITS	1000	1001	1010	1011	1100	1101	1110	1111
+_
+.T&
+cB c c c c c c c c c.
+0	0000		DCS		\(de	\(`A		\(`a
+1	0001		PU1	\(r!	\(+-	\('A	\(~N	\('a	\(~n
+2	0010		PU2	\(ct	\(S2	\(^A	\(`O	\(^a	\(`o
+3	0011		STS	\(Po	\(S3	\(~A	\('O	\(~a	\('o
+4	0100	IND	CCH		 	\(:A	\(^O	\(:a	\(^o
+5	0101	NEL	MW	\(Ye 	\(mc	\(oA	\(~O	\(oa	\(~o
+6	0110	SSA	SPA	 	\(ps	\(AE	\(:O	\(ae	\(:o
+7	0111	ESA	EPA	\(sc	\(pc	\(,C	\(OE	\(,c	\(oe
+8	1000	HTS		\(Cs	 	\(`E	\(/O	\(`e	\(/o
+9	1001	HTJ		\(co	\(S1	\('E	\(`U	\('e	\(`u
+10	1010	VTS		\(Of	\(Om	\(^E	\('U	\(^e	\('u
+11	1011	PLD	CSI	\(Fo	\(Fc	\(:E	\(^U	\(:e	\(^u
+12	1100	PLU	ST	 	\(14	\(`I	\(:U	\(`i	\(:u
+13	1101	RI	OSC		\(12	\('I	\(:Y	\('i	\(:y
+14	1110	SS2	PM			\(^I		\(^i
+15	1111	SS3	APC		\(r?	\(:I	\(ss	\(:i
+.TE
+.
+.SS "UK National Character Set"
+.TS
+c c cB cB cB cB cB cB cB cB
+c cB c c c c c c c c.
+	COLUMN	0	1	2	3	4	5	6	7
+ROW	BITS	000	001	010	011	100	101	110	111
+_
+.T&
+cB c c c c c c c c c.
+0	0000	NUL	DLE	SP	0	@	P	\`	p
+1	0001	SOH	DC1	!	1	A	Q	a	q
+2	0010	STX	DC2	\(dq	2	B	R	b	r
+3	0011	ETX	DC3	\(sh	3	C	S	c	s
+4	0100	EOT	DC4	\(Po	4	D	T	d	t
+5	0101	ENQ	NAK	%	5	E	U	e	u
+6	0110	ACK	SYN	&	6	F	V	f	v
+7	0111	BEL	ETB	\(aq	7	G	W	g	w
+8	1000	BS	CAN	(	8	H	X	h	x
+9	1001	HT	EM	)	9	I	Y	i	y
+10	1010	LF	SUB	*	:	J	Z	j	z
+11	1011	VT	ESC	+	;	K	[	k	{
+12	1100	FF	FS	,	<	L	\(rs	l	|
+13	1101	CR	GS	\-	\&=	M	]	m	}
+14	1110	SO	RS	.	>	N	\(ha	n	\(ti
+15	1111	SI	US	/	?	O	\&_	o	DEL
+.TE
+.
+.SS "DEC Special Graphics"
+.TS
+c c cB cB cB cB cB cB cB cB
+c cB c c c c c c c c.
+	COLUMN	0	1	2	3	4	5	6	7
+ROW	BITS	000	001	010	011	100	101	110	111
+_
+.T&
+cB c c c c c c c c c.
+0	0000	NUL	DLE	SP	0	@	P	\[u25C6]	\[u23BB]
+1	0001	SOH	DC1	!	1	A	Q	\[u2592]	\[u2500]
+2	0010	STX	DC2	\(dq	2	B	R	\[u2409]	\[u23BC]
+3	0011	ETX	DC3	\(sh	3	C	S	\[u240C]	\[u23BD]
+4	0100	EOT	DC4	\(Do	4	D	T	\[u240D]	\[u251C]
+5	0101	ENQ	NAK	%	5	E	U	\[u240A]	\[u2524]
+6	0110	ACK	SYN	&	6	F	V	\(de	\[u2534]
+7	0111	BEL	ETB	\(aq	7	G	W	\(+-	\[u252C]
+8	1000	BS	CAN	(	8	H	X	\[u2424]	\[u2502]
+9	1001	HT	EM	)	9	I	Y	\[u240B]	\(<=
+10	1010	LF	SUB	*	:	J	Z	\[u2518]	\(>=
+11	1011	VT	ESC	+	;	K	[	\[u2510]	\(*p
+12	1100	FF	FS	,	<	L	\(rs	\[u250C]	\(!=
+13	1101	CR	GS	\-	\&=	M	]	\[u2514]	\(Po
+14	1110	SO	RS	.	>	N	\(ha	\[u253C]	\(pc
+15	1111	SI	US	/	?	O		\[u23BA]	DEL
+.TE
+.
+.SS "Display Controls Font"
+.TS
+c c cB cB cB cB cB cB cB cB
+c cB c c c c c c c c.
+	COLUMN	0	1	2	3	4	5	6	7
+ROW	BITS	0000	0001	0010	0011	0100	0101	0110	0111
+_
+.T&
+cB c c c c c c c c c.
+0	0000	\[u2400]	\[u2410]		0	@	P	\`	p
+1	0001	\[u2401]	\[u2411]	!	1	A	Q	a	q
+2	0010	\[u2402]	\[u2412]	\(dq	2	B	R	b	r
+3	0011	\[u2403]	\[u2413]	\(sh	3	C	S	c	s
+4	0100	\[u2404]	\[u2414]	\(Do	4	D	T	d	t
+5	0101	\[u2405]	\[u2415]	%	5	E	U	e	u
+6	0110	\[u2406]	\[u2416]	&	6	F	V	f	v
+7	0111	\[u2407]	\[u2417]	\(aq	7	G	W	g	w
+8	1000	\[u2408]	\[u2418]	(	8	H	X	h	x
+9	1001	\[u2409]	\[u2419]	)	9	I	Y	i	y
+10	1010	\[u240A]	\[u241A]	*	:	J	Z	j	z
+11	1011	\[u240B]	\[u241B]	+	;	K	[	k	{
+12	1100	\[u240C]	\[u241C]	,	<	L	\(rs	l	|
+13	1101	\[u240D]	\[u241D]	\-	\&=	M	]	m	}
+14	1110	\[u240E]	\[u241E]	.	>	N	\(ha	n	\(ti
+15	1111	\[u240F]	\[u241F]	/	?	O	\&_	o	\[u2421]
+.TE
+.
+.SS "Display Controls Font (Cont)"
+.TS
+c c cB cB cB cB cB cB cB cB
+c cB c c c c c c c c.
+	COLUMN	8	9	10	11	12	13	14	15
+ROW	BITS	1000	1001	1010	1011	1100	1101	1110	1111
+_
+.T&
+cB c c c c c c c c c.
+0	0000	80	90	A0	\(de	\(`A	D0	\(`a	F0
+1	0001	81	91	\(r!	\(+-	\('A	\(~N	\('a	\(~n
+2	0010	82	92	\(ct	\(S2	\(^A	\(`O	\(^a	\(`o
+3	0011	83	93	\(Po	\(S3	\(~A	\('O	\(~a	\('o
+4	0100	84	94	A4	B4	\(:A	\(^O	\(:a	\(^o
+5	0101	85	95	\(Ye 	\(mc	\(oA	\(~O	\(oa	\(~o
+6	0110	86	96	A6	\(ps	\(AE	\(:O	\(ae	\(:o
+7	0111	87	97	\(sc	\(pc	\(,C	\(OE	\(,c	\(oe
+8	1000	88	98	\(Cs	B8	\(`E	\(/O	\(`e	\(/o
+9	1001	89	99	\(co	\(S1	\('E	\(`U	\('e	\(`u
+10	1010	8A	9A	\(Of	\(Om	\(^E	\('U	\(^e	\('u
+11	1011	8B	9B	\(Fo	\(Fc	\(:E	\(^U	\(:e	\(^u
+12	1100	8C	9C	AC	\(14	\(`I	\(:U	\(`i	\(:u
+13	1101	8D	9D	AD	\(12	\('I	\(:Y	\('i	\(:y
+14	1110	8E	9E	AE	BE	\(^I	DE	\(^i	FE
+15	1111	8F	9F	AF	\(r?	\(:I	\(ss	\(:i	\[u25A1]
+.TE
+.
+.SS "Escape Sequences"
+An escape sequence is a sequence of one or more ASCII graphic characters
+preceded by the C0 character ESC. For example,
+.P
+.RS
+.EX
+ESC  #  6
+.EE
+.RE
+.P
+is an escape sequence that causes the current line of text to have
+double-width characters. Escape sequences use only 7-bit characters, and
+can be used in 7-bit or 8-bit environments.
+.
+.SS "Control Sequences"
+A control sequence is a sequence of one or more ASCII graphic characters
+preceded by CSI (9/11). CSI can also be expressed as the 7-bit code
+extension ESC [. So you can express all control sequences as escape
+sequences whose second character code is [. For example, the following
+two sequences are equivalent sequences that perform the same function
+(they cause the display to use 132 columns per line rather than 80).
+.P
+.RS
+.EX
+CSI  ?  3  h
+ESC  [  ?  3  h
+.EE
+.RE
+.P
+Whenever possible, use CSI instead of ESC [ to introduce a control
+sequence. CSI can be used only in an 8-bit environment.
+.
+.SS "Device Control Strings"
+A device control string is a delimited string of characters used in a
+data stream as a logical entity for control purposes. It consists of an
+opening delimiter DCS, a command string (data), and a closing delimiter
+ST.
+.P
+DCS is an 8-bit control character that can also be expressed as ESC P
+when coding for a 7-bit environment.
+.P
+ST is an 8-bit control character that can also be expressed as ESC \(rs
+when coding for a 7-bit environment.
+.
+.SH "TRANSMITTED CODES"
+.SS "Main Keypad Function Keys"
+.TS
+lB lBX
+l lX.
+Key	Code Transmitted
+
+<X	DEL character.
+TAB	HT character
+RETURN	T{
+CR character only or a CR character and an LF character, depending on
+the set/reset state of Linefeed/New Line mode (LNM).
+T}
+CTRL	Does not transmit a code.
+LOCK	Does not transmit a code.
+SHIFT (2 keys)	Does not transmit a code.
+SPACE BAR	SP character.
+COMPOSE CHARACTER	Does not transmit a code.
+.TE
+.
+.SS "Editing Keys"
+.TS
+lB lB lB
+lB lB lB
+l l l.
+	Code Generated	VT100, VT52,
+Key	VT200 Mode	4010/4014 Modes
+
+FIND	CSI 1 \(ti	None
+INSERT HERE	CSI 2 \(ti	None
+REMOVE	CSI 3 \(ti	None
+SELECT	CSI 4 \(ti	None
+PREV SCREEN	CSI 5 \(ti	None
+NEXT SCREEN*	CSI 6 \(ti	None
+.TE
+.IP * 2
+In 4010/4014 mode, NEXT SCREEN is used as a \(lqCLEAR SCREEN\(rq key.
+.
+.SS "Cursor Control Keys"
+.TS
+lB lB s lB s
+lB lB s lB s
+lB lB lB lB lB
+lB lB lB lB lB
+l l l l l.
+	ANSI Mode*	VT52 Mode*
+	Cursor Key Mode
+	Reset	Set
+Key	Normal	Application	Normal	Application
+
+\(ua	CSI A	SS3 A	ESC A	ESC A
+\(da	CSI B	SS3 B	ESC B	ESC B
+\(->	CSI C	SS3 C	ESC C	ESC C
+\(<-	CSI D	SS3 D	ESC D	ESC D
+.TE
+.IP * 2
+ANSI mode applies to VT200 and VT100 modes. VT52 mode is
+ANSI-incompatible mode.
+.
+.SS "Auxiliary Keypad Keys"
+.TS
+lB cB s cB s
+lB cB s cB s
+lB lB lB lB lB
+lB lB lB lB lB
+lB lB lB lB lB
+lB lB lB lB lB
+l l l l l.
+	VT100/VT200
+	ANSI Mode*	VT52 Mode*
+
+	Keypad	Keypad	Keypad	Keypad
+	Numeric	Application	Numeric	Application
+Key	Mode	Mode	Mode	Mode
+
+0	0	SS3 p	0	ESC ? p
+1	1	SS3 q	1	ESC ? q
+2	2	SS3 r	2	ESC ? r
+3	3	SS3 s	3	ESC ? s
+4	4	SS3 t	4	ESC ? t
+5	5	SS3 u	5	ESC ? u
+6	6	SS3 v	6	ESC ? v
+7	7	SS3 w	7	ESC ? w
+8	8	SS3 x	8	ESC ? x
+9	9	SS3 y	9	ESC ? y
+\-	\-(minus)	SS3 m	\-	ESC ? m
+,	,(comma)	SS3 l	,	ESC ? l\[u253C]
+.	.(period)	SS3 n	.	ESC ? n
+Enter	CR	SSS3 M	CR	ESC ? M\[u256A]
+	or		or
+	CR LF		CR LF
+PF1	SS3 P	SS3 P	ESC P	ESC P
+PF2	SS3 Q	SS3 Q	ESC Q	ESC Q
+PF3	SS3 R	SS3 R	ESC R	ESC R
+PF4	SS3 S	SS3 S	ESC S	ESC S\[u253C]
+.TE
+.IP * 2
+ANSI mode applies to VT200 and VT100 modes. VT52 mode is an
+ANSI-incompatible mode.
+.IP \[u253C] 2
+You cannot generate these sequences on a VT52 terminal.
+.IP \[u256A] 2
+Keypad Numeric Mode. ENTER generates the same codes as RETURN. You can
+change the code generated by RETURN with the Linefeed/New Line Mode.
+When reset, the Linefeed/New Line Mode causes RETURN to generate a
+single control character (CR). When set, the mode causes RETURN to
+generate two control characters (CR, LF).
+.
+.SS "Top Row Function Keys"
+.TS
+lB lB lB s
+lB lB lB lB
+lB lB lB lB
+lB lB lB lB
+l l l l.
+		Code Generated
+			VT100,
+Name on	Generic	VT200	VT52
+Legend Strip	Name	Mode	Modes
+
+HOLD SCREEN	(F1)*	-	-
+PRINT SCREEN	(F2)*	-	-
+SET-UP	(F3)*	-	-
+DATA/TALK	(F4)*	-	-
+BREAK	(F5)*	-	-
+F6	F6	CSI 1 7 \(ti	-
+F7	F7	CSI 1 8 \(ti	-
+F8	F8	CSI 1 9 \(ti	-
+F9	F9	CSI 2 0 \(ti	-
+F10	F10	CSI 2 1 \(ti	-
+F11 (ESC)	F11	CSI 2 3 \(ti	ESC
+F12 (BS)	F12	CSI 2 4 \(ti	BS
+F13 (LF)	F13	CSI 2 5 \(ti	LF
+F14	F14	CSI 2 6 \(ti	-
+HELP	(F15)	CSI 2 8 \(ti	-
+DO	(F16)	CSI 2 9 \(ti	-
+F17	F17	CSI 3 1 \(ti	-
+F18	F18	CSI 3 2 \(ti	-
+F19	F19	CSI 3 3 \(ti	-
+F20	F20	CSI 3 4 \(ti	-
+.TE
+.IP * 2
+F1 through F5 are local function keys and do not generate codes.
+.
+.SS "Keys Used to Generate 7-Bit Control Characters"
+.TS
+lB lB lB
+lB lB lB
+lB lB lB
+l l l.
+Control	Key Pressed
+Character	With CTRL	Dedicated
+Mnemonic	(All Modes)	Function Key
+
+NUL	2, space
+SOH	A
+STX	B
+ETX	C
+EOT	D
+ENQ	E
+ACK	F
+BEL	G
+BS	H	F12 (BS)*
+HT	I	TAB
+LF	J	F13 (LF)*
+VT	K
+FF	L
+CR	M	RETURN
+SO	N
+SI	O
+DLE	P
+DC1	Q\[u253C]
+DC2	R
+DC3	S\[u253C]
+DC4	T
+NAK	U
+SYN	V
+ETB	W
+CAN	X
+EM	Y
+SUB	Z
+ESC	3, [	F11 (ESC)*
+FS	4, /
+GS	5, ]
+RS	6, \(ti
+US	7, ?
+DEL	8	DELETE
+.TE
+.IP * 2
+Keys F11, F12, and F13 generate these 7-bit control characters only when
+the terminal is operated in VT100 mode, VT52 mode or 4010/4014 mode.
+.IP \[u253C] 2
+These keystrokes are enabled only if XOFF support is disabled. If XOFF
+support is enabled, then CTRL-S is a \(lqhold screen\(rq local function
+and CTRL-Q is an \(lqunhold screen\(rq local function.
+.
+.SH "RECEIVED CODES"
+.
+.SS "Compatibility Level (DECSCL)"
+.TS
+lB lB
+l l.
+Sequence	Action
+
+CSI 6 1 \(dq p	Set terminal for level 1
+	(VT100 mode).
+CSI 6 2 \(dq p	Set terminal for level 2
+	(VT200 mode, 8-bit controls).
+CSI 6 2 ; 0 \(dq p	Set terminal for level 2
+	(VT200 mode, 8-bit controls).
+CSI 6 2 ; 1 \(dq p	Set terminal for level 2
+	(VT200 mode, 7-bit controls).
+CSI 6 2 ; 2 \(dq p	Set terminal for level 2
+	(VT200 mode, 8-bit controls).
+.TE
+.
+.SS "C0 (ASCII) Control Characters Recognized"
+.TS
+lB lB lBX
+l l l.
+Mnemonic	Name	Action
+
+NUL	Null	Ignored when received.
+
+ENQ	Enquiry	T{
+Answerback message is generated.
+T}
+
+BEL	Bell	T{
+Generates bell tone if bell is enabled.
+T}
+
+BS	Backspace	T{
+Moves cursor to the left one character position: if cursor is at left
+margin, no action occurs.
+T}
+
+HT	T{
+Horizontal
+.br
+tabulation
+T}	T{
+Moves cursor to next tab stop, or to right margin if there are no more
+tab stops. Does not cause autowrap.
+T}
+
+LF	Linefeed	T{
+Causes a linefeed or a new line operation, depending on the setting of
+new line mode.
+T}
+
+VT	T{
+Vertical
+.br
+tabulation
+T}	Processed as LF.
+
+FF	Form feed	Processed as LF.
+
+CR	T{
+Carriage
+.br
+return
+T}	T{
+Moves cursor to left margin on current line.
+T}
+
+T{
+SO
+.br
+(LS1)
+T}	T{
+Shift out
+.br
+(lock shift G1)
+T}	T{
+Invokes G1 character set into GL. G1 is designated by a
+select-character-set  (SCS) sequence.
+T}
+
+T{
+SI
+.br
+(LS0)
+T}	T{
+Shift in
+.br
+(lock shift G0)
+T}	T{
+Invoke G0 character set into GL. G0 is designated by a
+select-character-set (SCS) sequence.
+T}
+
+DC1	T{
+Device
+.br
+control 1
+T}	T{
+Also referred to as XON. If XOFF support is enabled, DC1 clears DC3
+(XOFF), causing the terminal to continue transmitting characters
+(keyboard unlocks) unless KAM mode is currently set.
+T}
+
+DC3	T{
+Device
+.br
+control 3
+T}	T{
+Also referred to as XOFF. If XOFF support is enabled, DC3 causes the
+terminal to stop transmitting characters until a DC1 control character
+is received.
+T}
+
+CAN	Cancel	T{
+If received during an escape or control sequence, terminates and cancels
+the sequence. No error character is displayed. If received during a
+device control string, the DCS is terminated and no error character is
+displayed.
+T}
+
+SUB	Substitute	T{
+If received during escape or control sequence, terminates and cancels
+the sequence. Causes a reverse question mark to be displayed. If
+received during a device control sequence, the DCS is terminated and
+reverse question mark is displayed.
+T}
+
+ESC	Escape	T{
+Processed as escape sequence introducer. Terminates any escape, control
+or device control sequence which is in progress.
+T}
+
+DEL	Delete	T{
+Ignored when received.
+.br
+Note: May not be used as a time fill character.
+T}
+.TE
+.
+.SS "C1 Control Characters Recognized"
+.TS
+lB lB lB lBX
+lB lB lB lBX
+lB lB lB lBX
+l l l lX.
+	Equivalent
+Control	7-Bit Code
+Character	Extension	Name	Action
+
+IND	ESC D	Index	T{
+Moves cursor down one line in same column. If cursor is at bottom
+margin, screen performs a scroll up.
+T}
+
+NEL	ESC E	Next line	T{
+Moves cursor to first position on next line. If cursor is at bottom
+margin, screen performs a scroll up.
+T}
+
+HTS	ESC H	T{
+Horizontal
+.br
+tab set
+T}	T{
+Sets one horizontal tab stop at the column where the cursor is.
+T}
+
+RI	ESC M	T{
+Reverse
+.br
+index
+T}	T{
+Moves cursor up one line in same column. If cursor is at top margin,
+screen performs a scroll down.
+T}
+
+SS2	ESC N	T{
+Single
+.br
+shift G2
+T}	T{
+Temporarily invokes G2 character set into GL for the next graphic
+character. G2 is designated by a select-character-set (SCS) sequence.
+T}
+
+SS3	ESC O	T{
+Single
+.br
+shift G3
+T}	T{
+Temporarily invokes G3 character set into GL for the next graphic
+character. G3 is designated by a select-character-set (SCS) sequence.
+T}
+
+DCS	ESC P	T{
+Device
+.br
+control
+.br
+string
+T}	T{
+Processed as opening delimiter of a device control string for device
+control use.
+T}
+
+CSI	ESC [	T{
+Control
+.br
+sequence
+.br
+introducer
+T}	T{
+Processed as control sequence introducer.
+T}
+
+ST	ESC \(rs	T{
+String
+.br
+terminator
+T}	T{
+Processed as closing delimiter of a string opened by DCS.
+T}
+.TE
+.
+.SS "CHARACTER SET SELECTION (SCS)"
+.
+.SS "Designating \(lqHard\(rq Character Sets"
+.TS
+lB lB lB
+lB lB lB
+l l l.
+	Escape
+Character Set	Sequence	Designate as:
+
+ASCII	ESC ( B	G0 (default)
+	ESC ) B	G1
+	ESC * B	G2 (VT200 mode only)
+	ESC + B	G3 (VT200 mode only)
+
+DEC Supplemental	ESC ( <	G0
+(VT200 mode only)	ESC ) <	G1
+	ESC * <	G2
+	ESC + <	G3
+
+UK National	ESC ( A	G0
+(VT100 mode only)	ESC ) A	G1
+
+DEC Special	ESC ( O	G0
+Graphics	ESC ) O	G1
+	ESC * O	G2 (VT200 mode only)
+	ESC + O	G3 (VT200 mode only)
+.TE
+.
+.SS "Designating \(lqSoft\(rq (Down-Line Loadable) Character Sets"
+.TS
+lB lB
+l l.
+Escape Sequence	Designate As:
+
+ESC ( Dscs	G0
+ESC ) Dscs	G1
+ESC * Dscs	G2
+ESC + Dscs	G3
+.TE
+.P
+Dscs can consist of zero, one, or two intermediate characters and a
+final character.
+.P
+Intermediate characters are in the range of 2/0 to 2/15; Final
+characters are in the range of 3/0 to 7/14 (see ASCII Code Table for
+column/row notation).
+.
+.SS "Invoking Character Sets Using Lock Shifts"
+.TS
+lB lB lB
+l l l.
+Control Name	Coding	Function
+LS0 - lock shift G0	SI	T{
+Invoke G0 into GL. (default)
+T}
+
+LS1 - lock shift G1	SO	Invoke G1 into GL.
+
+LS1R - lock shift G1,	ESC \(ti	T{
+Invoke G1 into GR. VT200 mode only.
+T}
+right		\^
+
+LS2 - lock shift G2	ESC n	T{
+Invoke G2 into GL. VT200 mode only.
+T}
+
+LS2R - lock shift G2,	ESC }	T{
+Invoke G2 into GR. (default)
+.br
+VT200 mode only.
+T}
+right		\^
+
+LS3 - lock shift G3	ESC o	T{
+Invoke G3 into GL. VT200 mode only.
+T}
+
+T{
+LS3R - lock shift G3,
+T}	ESC |	T{
+Invoke G3 into GR. VT200 mode only.
+T}
+right		\^
+.TE
+.
+.SS "Invoking Character Sets Using Single Shifts"
+.TS
+lB lB lB
+l l l.
+Control Name	Coding	Function
+
+SS2 - single shift G2	SS2	T{
+Invokes G2 into GL for the next graphic character
+T}
+	ESC N	\^
+
+SS3 - single shift G3	SS3	T{
+Invokes G3 into GL for the next graphic character
+T}
+	ESC O	\^
+.TE
+.
+.SS "Select C1 Control Transmission"
+.TS
+lB lB lBX
+lB lB lBX
+l l lX.
+Control
+Name	Sequence*	Action
+
+T{
+7-bit C1 control transmission (S7C1T)
+T}	ESC sp F	T{
+Causes all C1 codes returned to the application to be converted to their
+equivalent 7-bit code extensions.
+T}
+
+.T&
+cB s s.
+T{
+NOTE: The S7C1T sequence is ignored when the terminal is in VT100 or
+VT52 mode.
+T}
+
+.T&
+l l l.
+T{
+8-bit C1 control transmission (S8C1T)
+T}	ESC sp G	T{
+Causes the terminal to return C1 codes to the application without
+converting them to their equivalent 7-bit code extensions.
+T}
+.TE
+.IP * 2
+sp is a space character
+.
+.SS "Terminal Modes"
+.TS
+lB lB lB lB
+l l l l.
+Name	Mnemonic	Set Mode	Reset Mode*
+
+Keyboard	KAM	Locked	Unlocked
+Action\[u253C]		CSI 2 h	CSI 2 l
+
+Insertion-	IRM	Insert	Replace
+replacement		CSI 4 h	CSI 4 l
+
+Send-	SRM	Off	On
+receive		CSI 12 h	CSI 12 l
+
+Line feed-	LNM	New line	Line feed
+new line		CSI 20 h	CSI 20 l
+
+Cursor key	DECCKM	Application	Cursor
+		CSI ? 1 h	CSI ? 1 l
+
+ANSI/VT52	DECANM	N/A	VT52
+			CSI ? 2 l
+
+Column	DECCOLM	132 column	80 column
+		CSI ? 3 h	CSI ? 3 l
+
+Scrolling\[u253C]	DECSCLM	Smooth	Jump
+		CSI ? 4 h	CSI ? 4 l
+
+Screen\[u253C]	DECSCNM	Reverse	Normal
+		CSI ? 5 h	CSI ? 5 l
+
+Origin	DECOM	Origin	Absolute
+		CSI ? 6 h	CSI ? 6 l
+
+Auto wrap	DECAWM	On	Off
+		CSI ? 7 h	CSI ? 7 l
+
+Auto	DECARM	On	Off
+repeat\[u253C]		CSI ? 8 h	CSI ? 8 l
+
+Print form	DECPFF	On	Off
+feed		CSI ? 18 h	CSI ? 18 l
+
+Print extent	DECPEX	Full screen	Scrolling region
+		CSI ? 19 h	CS ? 19 l
+
+Text cursor	DECTCEM	On	Off
+enable		CSI ? 25 h	CSI ? 25 l
+
+Keypad	DECKPAM	Application	Numeric
+	DECKPNM	ESC =	ESC >
+
+Tektronix	DECTEK	On	Off
+4010/4014		CSI ? 38 h	CSI ? 38 l
+.TE
+.IP * 2
+The last character of each sequence is lowercase L (6/12)
+.IP \[u253C] 2
+User Preference feature
+.
+.SS "Cursor Positioning"
+.TS
+lB lB lB lBX
+lB lB lB lBX
+l l l lX.
+	Control
+Name	Character	Sequence	Action
+
+T{
+Cursor up
+.br
+(CUU)
+T}	-	CSI Pn A	T{
+Moves cursor up Pn lines in the same column.
+T}
+
+T{
+Cursor
+.br
+down
+.br
+(CUD)
+T}	-	CSI Pn B	T{
+Moves cursor down Pn lines in the same column.
+T}
+
+T{
+Cursor
+.br
+forward
+.br
+(CUF)
+T}	-	CSI Pn C	T{
+Moves cursor right Pn columns.
+T}
+
+T{
+Cursor
+.br
+backward
+.br
+(CUB)
+T}	-	CSI Pn D	T{
+Moves cursor left Pn columns
+T}
+
+T{
+Cursor
+.br
+position
+.br
+(CUP)
+T}	-	CSI Pl ; Pc H	T{
+Moves cursor to line Pl, column Pc. The numbering of the lines and
+columns depends on the state (set/reset) of origin mode (DECOM).
+T}
+
+T{
+Horizontal
+.br
+and vertical
+.br
+position
+.br
+(HVP)
+T}	-	CSI Pl ; Pc f	T{
+Moves cursor to line Pl, column Pc. The numbering of the lines and
+columns depends on the state (set/reset) of origin mode (DECOM). Digital
+recommends using CUP instead of HVP.
+T}
+
+T{
+Index
+.br
+(IND)
+T}	IND	ESC D	T{
+Moves cursor down one line in the same column. If the cursor is at the
+bottom margin the screen performs a scroll-up.
+T}
+
+T{
+Reverse
+.br
+index (RI)
+T}	RI	ESC M	T{
+Moves cursor up one line in the same column. If the cursor is at the top
+margin the screen performs a scroll-down.
+T}
+
+T{
+Next line
+.br
+(NEL)
+T}	NEL	ESC E	T{
+Moves the cursor to the first position of the next line. If the cursor
+is at the bottom margin the screen performs a scroll-up.
+T}
+
+T{
+Save
+.br
+cursor
+.br
+(DECSC)
+T}	-	ESC 7	T{
+Saves in terminal memory the:
+
+.BPC "cursor position"
+.BPC "graphic rendition"
+.BPC "character set shift state"
+.BPC "state of wrap flag"
+.BPC "state of origin mode"
+.BPC "state of selective erase"
+T}
+
+T{
+Restore
+.br
+cursor
+.br
+(DECRC)
+T}	-	ESC 8	T{
+Restores the states described for (DECSC) above. If none of the
+characteristics were saved: the cursor moves to the home position,
+origin mode is reset, no character attributes are assigned, and the
+default character set mapping is established.
+T}
+.TE
+.
+.SS "Tab Stops"
+.RS
+.B NOTE:
+.B These sequences are affected by the User Preference Lock in Set-Up.
+.RE
+.P
+.TS
+lB lB lB lBX
+lB lB lB lBX
+l l l lX.
+	Control
+Name	Character	Sequence	Action
+
+T{
+Horizontal
+.br
+tab set
+.br
+(HTS)
+T}	HTS	ESC H	T{
+Sets a tab stop at the current column.
+T}
+
+T{
+Tabulation
+.br
+clear
+.br
+(TBC)
+T}	-	CSI g	T{
+Clears a horizontal tab stop at cursor position.
+T}
+\^
+		CSI 0 g	T{
+Clears a horizontal tab stop at cursor position.
+T}
+
+		CSI 3 g	T{
+Clears all horizontal tab stops.
+T}
+.TE
+.
+.SS "Select Graphic Rendition (SGR)"
+You can select one or more character renditions at a time using the
+following format:
+.P
+.RS
+.EX
+CSI Ps ; ... Ps m
+.EE
+.RE
+.P
+When you use multiple parameters, they are executed in sequence. The
+effects are cumulative. For example, to change from increased intensity
+to blinking-underlined, you can use:
+.P
+.RS
+.EX
+CSI 0 ; 4 ; 5 ; m
+.EE
+.RE
+.P
+When you select a single parameter, no delimiter (3/11) is used.
+.P
+.TS
+lB lB
+l l.
+Ps	Action
+
+0	All attributes off
+1	Display bold
+4	Display underscored
+5	Display blinking
+7	Display negative (reverse) image
+2 2	Display normal intensity
+2 4	Display not underlined
+2 5	Display not blinking
+2 7	Display positive image
+.TE
+.
+.SS "Select Character Attributes (DECSCA)"
+You can select all subsequent characters to be \(lqselective
+erasable\(rq or \(lqnot selective erasable\(rq (see section on ERASING)
+using the following format:
+.P
+.RS
+.B NOTE: This sequence is supported only in VT200 mode.
+.P
+.EX
+CSI Ps \(dq q
+.EE
+.RE
+.P
+where:
+.P
+.TS
+lB lBX
+l lX.
+Ps	Action
+
+0	All attributes off (does not apply to SGR)
+1	T{
+Designate character as \(lqnon-erasable\(rq by DECSEL/DECSED (attribute
+on).
+T}
+2	T{
+Designate character as \(lqerasable\(rq by DECSEL/DECSED (attribute
+off).
+T}
+.TE
+.
+.SS "Line Attributes"
+.TS
+lB	lB	s
+lB	lB	s
+lB	lB	lB
+lB	l	l.
+Name	Sequence
+
+	Top half	Bottom Half
+
+Double Height Line	ESC # 3	ESC # 4
+(DECDHL)
+.T&
+lB l s.
+	T{
+The same character must be used on both lines to form full character. If
+the line was previously single-width, single-height, all characters to
+the right of center are lost.
+T}
+
+Single-Width Line	ESC # 5
+(DECSWL)
+
+Double-Width Line	ESC # 6
+(DECDWL)
+.TE
+.
+.SS "Editing"
+.TS
+lB lB lBX
+l l lX.
+Name	Sequence	Action
+
+Insert line (IL)	CSI Pn L	Inserts Pn lines at cursor.
+
+Delete line (DL)	CSI Pn M	T{
+Deletes Pn lines starting at the line with the cursor.
+T}
+
+T{
+Insert
+.br
+characters
+.br
+(ICH)
+.br
+(VT200 mode
+.br
+only)
+T}	CSI Pn @	T{
+Insert Pn blank characters at the cursor position, with the character
+attributes set to normal.
+T}
+
+T{
+Delete
+.br
+character (DCH)
+T}	CSI Pn P	T{
+Deletes Pn characters starting with the character at the cursor
+position.
+T}
+.TE
+.
+.SS "Erasing"
+.TS
+lB lB lBX
+lT lT lXT.
+Name	Sequence	Action
+
+T{
+Erase character
+.br
+(ECH)
+.br
+(VT200 mode
+.br
+only)
+T}	CSI Pn X	T{
+Erases characters at the cursor position and the next n-1 character.
+T}
+
+T{
+Erase in line
+.br
+(EL)
+T}	CSI K	T{
+Erases from the cursor to the end of the line, including the cursor
+position.
+T}
+
+	CSI 0 K	Same as above.
+
+	CSI 1 K	T{
+Erases from the beginning of the line to the cursor, including the
+cursor position.
+T}
+
+	CSI 2 K	Erases the complete line.
+
+T{
+Erase in display
+.br
+(ED)
+T}	CSI J	T{
+Erases from the cursor to the end of the screen, including the cursor
+position.
+T}
+
+	CSI 0 J	Same as above.
+
+	CSI 1 J	T{
+Erases from the beginning of the screen to the cursor, including the
+cursor position.
+T}
+
+	CSI 2 J	Erases the complete display.
+
+T{
+Selective erase
+.br
+in line
+.br
+(DECSEL)
+.br
+(VT200 mode
+.br
+only)
+T}	CSI ? K	T{
+Erases all \(lqerasable\(rq characters (DECSCA) from the cursor to the
+end of the line.
+T}
+\^
+\^	CSI ? 0 K	Same as above.
+\^
+\^	CSI ? 1 K	T{
+Erases all \(lqerasable\(rq characters (DECSCA) from the beginning of
+the line to and including the cursor position.
+T}
+
+	CSI ? 2 J	T{
+Erases all \(lqerasable\(rq characters (DECSCA) in the entire display.
+T}
+.TE
+.
+.SS "Set Top and Bottom Margins (DECSTBM)"
+.EX
+CSI Pt ; Pb r
+.EE
+.P
+Selects top and bottom margins defining the scrolling region. Pt is the
+line number of the first line in the scrolling region. Pb is the line
+number of the bottom line. If either Pt or Pb is not selected, they
+default to top and bottom respectively. Lines are counted from
+\(lq1\(rq.
+.
+.SS "Printing"
+Before you select a print operation, check printer status using the
+print status report (DSR) ((see Reports section).
+.P
+.TS
+lB lB lBX
+l l l.
+Name	Sequence	Action
+
+T{
+Auto print
+.br
+mode
+T}	CSI ? 5 i	T{
+Turns on auto print mode. Subsequent display lines print when you move
+the cursor off the line using a linefeed, form feed, vertical tab, or
+autowrap. The printed line is terminated with a carriage return and the
+character which moved the cursor off the previous line (LF, FF, or VT;
+autowrap lines end with a linefeed).
+T}
+
+	CSI ? 4 i	Turns off auto print mode.
+
+T{
+Printer
+.br
+controller
+T}	CSI 5 i	T{
+Turns on printer controller mode. The terminal transmits received
+characters to the printer without displaying them on the screen. All
+characters and character sequences except NUL, XON, XOFF, CSI 5 i, and
+CSI 4 i are sent to the printer. The terminal does not insert or delete
+spaces, or provide line delimiters, or select the correct printer
+character set.
+
+Printer controller mode is of higher priority than auto print mode. It
+can be selected during auto print mode.
+
+When in printer controller mode, keyboard activity continues to be
+directed to the host.
+T}
+
+	CSI 4 i	T{
+Turns off printer controller mode.
+T}
+
+T{
+Print cursor
+.br
+line
+T}	CSI ? 1 i	T{
+Prints the display line containing the cursor. The cursor position does
+not change. The print-cursor-line sequence is completed when the line
+prints.
+T}
+
+Print screen	CSI i	T{
+Prints the screen display (full screen or scrolling region, depending on
+the Print Extent DECPEX selection). Printer form feed mode (DECPFF)
+selects either a form feed (FF) or nothing as the print terminator. The
+print screen sequence is completed when the screen prints.
+T}
+
+	CSI 0 i	Same as above.
+
+T{
+Select graphics
+.br
+to printer
+T}	CSI ? i	T{
+Causes subsequent ReGIS Hardcopy commands to direct the graphics display
+to the printer port. Text that is part of the graphics screen prints
+with the graphics.
+T}
+
+	CSI ? 0 i	Same as above.
+
+T{
+Select graphics
+.br
+to host
+T}	CSI ? 2 i	T{
+Causes subsequent ReGIS Hardcopy commands to direct the graphics display
+to the host port.
+T}
+.TE
+.
+.SS "User Defined Keys (DECUDK)"
+The device control string format for down-line loading UDK functions is:
+.P
+.RS
+.EX
+DCS Pc ; Pl | Ky1/st1;ky2/st2;...kyn/stn ST
+.EE
+.RE
+.P
+where:
+.P
+.TS
+lB lBX
+l lX.
+Pc	Meaning
+
+None	Clear all keys before loading new values
+0	Clear all keys before loading new values
+1	Load new key values, clear old only where defined
+.TE
+.P
+.TS
+lB lBX
+l lX.
+Pl	Meaning
+
+None	Lock the keys against future redefinition
+0	Lock the keys against future redefinition
+1	Do not lock the keys against future redefinition
+.TE
+.P
+.TS
+lB lB
+l l.
+Key (kyn)	Value (stn)
+
+F6	17
+F7	18
+F8	19
+F9	20
+F10	21
+
+F11	23
+F12	24
+F13	25
+F14	26
+
+HELP	28
+DO	29
+
+F17	31
+F18	32
+F19	33
+F20	34
+.TE
+.
+.SS "Down-Line Loading Characters (DRCS)"
+You can down-line load your DRCS character set using the following
+DECDLD device control string format:
+.P
+.RS
+.EX
+DCS Pfn;Pcn;Pe;Pcms;Pw;Pt { Dscs Sxbp1;Sxbp2;...;Sxbpn ST
+.EE
+.RE
+.P
+Parameter descriptions are as follows:
+.
+.SS "DECDLD Parameter Characters"
+.TS
+lBT lBT lBXT
+lT lT lXT.
+Parameter	Name	Description
+
+Pfn	T{
+Font
+.br
+number
+T}	0 and 1.
+
+Pcn	T{
+String
+.br
+character
+.br
+number
+T}	T{
+Selects starting character in DRCS font buffer to be loaded.
+T}
+
+Pe	T{
+Erase
+.br
+control
+T}	T{
+.IL "0 =" 4
+erase all characters in this DRCS set
+.IL "1 =" 4
+erase only the characters that are being reloaded
+.IL "2 =" 4
+erase all characters in all DRCS sets (this font buffer number and other
+font buffer numbers)
+T}
+
+Pcms	T{
+Character
+.br
+Matrix
+.br
+size
+T}	T{
+.IL "0 =" 4
+Device default (7 x 10)
+.IL "1 =" 4
+(not used)
+.IL "2 =" 4
+5 x 10
+.IL "3 =" 4
+6 x 10
+.IL "4 =" 4
+7 x 10
+T}
+
+Pw	T{
+Width
+.br
+attribute
+T}	T{
+0 = Device default (80 columns)
+.br
+1 = 80 column
+.br
+2 = 132 column
+T}
+
+Pt	T{
+Text/
+.br
+full-cell
+T}	T{
+0 = Device default (text)
+.br
+1 = Text
+.br
+2 = Full-cell
+T}
+.TE
+.P
+Dscs defines the character set \(lqname\(rq for the soft font, and is
+used in the SCS (select character set) escape sequence.
+.P
+.I "Sxbp1;Sxbp2;...;Sxbpn"
+are sixel bit patterns (1 to 94 patterns) for characters separated by
+semicolons. Each sixel bit pattern has the form:
+.P
+.RS
+.EX
+S..S/...S
+.EE
+.RE
+.P
+where the first S...S represents the upper columns (sixels) of the DRCS
+character, the slash advances the sixel pattern to the lower columns of
+the DRCS character, and the second S...S represents the lower
+columns(sixels) of the DRCS.
+.
+.SS "Clearing a Down-Line Loaded Character Set"
+You can clear a character set that you have down-line loaded using the
+following DECDLD control sequence:
+.P
+.RS
+.EX
+DCS 1;1;2 { sp @ ST
+.EE
+.RE
+.P
+Down-line loaded character sets are also cleared by:
+.bP
+performing the power-up self test
+.bP
+using the Set-Up Recall or Default functions
+.bP
+using RIS or ESC c sequences
+.
+.SS "Device Attributes (DA)"
+.TS
+lBT lBT lBXT
+lT lT lXT.
+Communication	Sequence	Meaning
+
+T{
+Host to VT240
+.br
+(primary DA
+.br
+request)
+T}	T{
+CSI c
+.br
+or
+.br
+CSI 0 c
+T}	T{
+\(lqWhat is your service class code and what are your attributes?\(rq
+T}
+
+T{
+VT240 to host
+.br
+(primary DA
+.br
+response)
+T}	T{
+CSI ? 62; 1; 2; 3; 4; 6; 7; 8 c
+T}	T{
+\(lqI am a service class 2 (VT200 family) terminal (62) with 132 columns
+(1), printer port (2), ReGIS display (3), sixel graphics I/O (4),
+selective erase (6), DRCS (7), and UDK (8).\(rq
+T}
+
+T{
+Host to VT240
+.br
+(secondary DA
+.br
+response)
+T}	T{
+CSI > c
+.br
+or
+.br
+CSI > 0 c
+T}	T{
+\(lqWhat type of terminal are you, what is your firmware version, and
+what hardware options do you have installed?\(lq
+T}
+
+T{
+VT240 to host
+.br
+(secondary DA
+.br
+response)
+T}	CSI > 1; Pv; Po c	T{
+\(lqI am a VT240 (2), my firmware version is (Pv), and I have Po option
+installed.\(rq
+T}
+.TE
+.P
+Where:
+.P
+.RS
+Pv = firmware/software version
+.br
+Po: 0 = no options
+    1 = Integral modem
+.RE
+.P
+EXAMPLE: CSI>2;10;1c = VT240 version 1.0, with integral modem option
+.
+.SS "Device Status Report (DSR)"
+.TS
+lBT lBT lBXT
+lT lT lXT.
+Communication	Sequence	Meaning
+
+T{
+Host to VT240
+.br
+(request for
+.br
+terminal status)
+T}	CSI 5 n	T{
+\(lqPlease report your operating status using a DSR control sequence.
+Are you in good operating condition or do you have a malfunction?\(rq
+T}
+
+T{
+VT240 to host
+.br
+(DA response)
+T}	CSI 0 n	T{
+\(lqI have no malfunction.\(rq
+T}
+
+	CSI 3 n	T{
+\(lqI have a malfunction.\(rq
+T}
+
+T{
+Host to VT240
+.br
+(request for
+.br
+cursor position)
+T}	CSI 6 n	T{
+\(lqPlease report your cursor position using a CPR (not DSR) control
+sequence.\(rq
+T}
+
+T{
+VT240 to host
+.br
+(CPR response)
+T}	CSI Pv; Ph R	T{
+\(lqMy cursor is positioned at (Pv); (Ph).\(lq
+T}
+.TE
+.P
+Where:
+.RS
+Pv = vertical position (row)
+.br
+Ph = horizontal position (column)
+.RE
+.
+.SS "DSR - Printer Port"
+.TS
+lBT lBT lBTX
+lT lT lXT.
+Communication	Sequence	Meaning
+
+T{
+Host to VT240
+.br
+(request for
+.br
+printer status)
+T}	CSI ? 15 n	T{
+\(lqWhat is the printer status?\(rq
+T}
+
+VT240 to host	CSI ? 13 n	T{
+\(lqDTR has not been asserted on the printer port since power up or
+reset - in essence, I have no printer.\(rq
+T}
+
+	CSI ? 10 n	T{
+\(lqDTR is asserted on the printer port. The printer is ready.\(lq
+T}
+
+	CSI ? 11 n	T{
+\(lqDTR is not currently asserted on the printer port. The printer is
+not ready.\(rq
+T}
+.TE
+.
+.SS "DSR - User Defined Keys"
+.TS
+lBT lBT lBTX
+lT lT lXT.
+Communication	Sequence	Meaning
+
+T{
+Host to VT240
+.br
+(request for
+.br
+UDK status)
+T}	CSI ? 25 n	T{
+\(lqAre User Defined Keys locked or unlocked?\(rq
+T}
+
+VT240 to host	CSI ? 20 n	T{
+\(lqUser Defined Keys are unlocked.\(rq
+T}
+
+	CSI ? 21 n	T{
+\(lqUser Defined Keys are locked.\(rq
+T}
+.TE
+.
+.SS "Identification (DECID)"
+.EX
+ESC Z
+.EE
+.P
+Causes the terminal to send a primary DA response sequence- DECID,
+however, is not recommended. You should use the primary DA request for
+this purpose.
+.
+.SS "ReGIS Graphics Protocol Control Mode"
+The ReGIS graphics mode is available through the VT200 and VT100 modes
+only. You enter ReGIS by sending a ReGIS device control string to the
+terminal.
+.P
+.TS
+lBT lBXT
+lBT lBXT
+lT lXT.
+Control String
+Parameter
+
+T{
+DCS p
+.br
+or
+.br
+DCS 0 p
+T}	T{
+Causes VT240 to enter ReGIS at previous command level. (ReGIS is at the
+highest command level if the terminal was powered up after the last
+device control string.)
+T}
+
+DCS 1 p	T{
+Causes VT240 to enter ReGIS at highest command level.
+T}
+
+DCS 2 p	T{
+Causes VT240 to enter ReGIS at previous command level with commands
+displayed on the screen's bottom line (command display mode enabled).
+T}
+
+DCS 3 p	T{
+Causes VT240 to enter ReGIS at highest command level with commands
+displayed on the screen's bottom line (command mode enabled).
+T}
+
+ST	T{
+Exit ReGIS mode and return to text mode.
+T}
+.TE
+.
+.SS "Terminal Reset"
+.TS
+lB lB lBX
+lT lT lXT.
+Name	Sequence	Action
+
+T{
+Soft terminal
+.br
+reset (DECSTR)
+T}	CSI ! p	T{
+Sets terminal to power-up default states
+T}
+
+T{
+Hard terminal
+.br
+reset (RIS)
+T}	ESC c	T{
+Replaces all set-up parameters with NVR values or power-up default
+values if NVR values do not exist.
+T}
+.TE
+.
+.SS "Tests (DECTST)"
+The sequence format for invoking terminal tests is:
+.P
+.RS
+.EX
+CSI 4 ; ..... ; Ps y
+.EE
+.RE
+.P
+Where:
+.P
+.TS
+lB lBX
+l lX.
+Ps	Test
+
+ 0	Test 1, 2, 3, 4, and 6
+ 1	Power-up self-test
+ 2	EIA port data loopback test
+ 3	Printer port loopback test
+ 4	Color Bar Test
+ 5	(not used)
+ 6	EIA port modem control line loopback test
+ 7	20 mA port loopback test
+ 8	(not used)
+ 9	Repeat other test in parameter string
+10	Full screen blue
+11	Full screen green
+12	Full screen red
+13	Full screen white
+14	Integral modem analog loopback test
+15	Integral modem external loopback test
+16 and up	(not used)
+.TE
+.P
+.RS
+.B NOTE:
+.B DECTST causes a communications line disconnect.
+.RE
+.
+.SS "Adjustments (DECALN)"
+.TS
+l lX.
+ESC # 8	T{
+Displays screen alignment pattern (full screen of \(lqEs\(rq).
+T}
+.TE
+.
+.SS "VT52 Escape Sequences"
+.TS
+lB lBX
+l lX.
+Escape Sequence	Function
+
+ESC A	Cursor up
+ESC B	Cursor down
+ESC C	Cursor right
+ESC D	Cursor left
+ESC F	Enter \(lqgraphics\(rq mode
+ESC G	Exit \(lqgraphics\(rq mode
+ESC H	Cursor to home
+ESC I	Reverse line feed
+ESC J	Erase to end of screen
+ESC K	Erase to end of line
+ESC Y Line Column*	Direct cursor address
+ESC Z\u[253C]	Identify
+ESC =	Enter alternate keypad mode
+ESC >	Exit alternate keypad mode
+ESC <	Enter ANSI mode
+ESC \(ha	Enter auto print mode
+ESC _	Exit auto print mode
+ESC W	Enter printer controller mode
+ESC X	Exit printer controller mode
+ESC ]	Print screen
+ESC V	Print cursor line
+.TE
+.IP * 2
+Line and column numbers for direct cursor addressing are single
+character codes whose value is the desired number plus 37 (octal).
+.IP \[u253C] 2
+The response to ESC Z in VT52 mode is ESC / Z.
+.
+.SH "ReGIS"
+.SS "ReGIS Command Summary"
+.TS
+lB lB lBX
+lB lB lBX
+lB lB lBX
+l l lX.
+Command	ReGIS
+Key	Command
+Letter	Name	Description
+
+P	Position	T{
+Position the graphics cursor without performing any writing.
+T}
+
+V	Vector	T{
+Draws vectors (straight lines) between screen locations specified within
+the command.
+T}
+
+C	Curve	T{
+Draws circles, arcs, and/or curves using screen locations specified
+within the command.
+T}
+
+T	Text	T{
+Controls display of graphics text strings, and allows specification of
+characters to be displayed.
+T}
+
+W	Write	T{
+Specifies writing controls, such as shading.
+T}
+
+S	Screen	T{
+Specifies screen controls, such as erasing the screen.
+T}
+
+@	Macrograph	T{
+Defines a macrograph. Macrographs are used for storing and recalling
+ReGIS command strings, allowing a complex figure, which is to be used
+more than once to be stored as a macrograph, and invoked as a single
+command.
+T}
+
+L	Load	T{
+Controls definition and loading of alternate characters which can be
+displayed using the Text command.
+T}
+
+R	Report	T{
+Reports information (such as active position, and error codes);
+initiates report position interactive mode.
+T}
+
+;	T{
+Resynchronization
+T}	T{
+Semicolon serves as a resynchronization command.
+T}
+.TE
+.
+.SS "ReGIS Power On/Reset Default Values Summary"
+.TS
+lBT lBT lBXT
+lBT lBT lBXT
+lT lT lXT.
+Command
+Type	Command	Default Description
+
+T{
+Screen
+.br
+Control
+T}	S(A[0,0] [799,479])	T{
+Defines the screen as having coordinate values of [0,0] for upper left
+corner, and [799,479]  for lower right.
+T}
+
+T{
+Screen
+.br
+Control
+T}	S[0,0]	T{
+No scroll is to occur.
+T}
+
+T{
+Screen
+.br
+Control
+T}	S(H(P[50,0]))	T{
+Any printing from the screen will be offset at the printer 50
+coordinates to approximately centering on 8-1/2 inch wide paper.
+T}
+
+T{
+Screen
+.br
+Control
+T}	S(M0(L0)1(L25)2(L50)3(L75))	T{
+Output map values for monochrome monitor are dark for M0, dim grey for
+M1, light grey for M2, and white for M3.
+T}
+
+T{
+Screen
+.br
+Control
+T}	S(M0(AD)1(AB)2(AR)3(AG))	T{
+Output map values for color monitor are dark for M0, blue for M1, red
+for M2, and green for M3.
+T}
+
+T{
+Screen
+.br
+Control
+T}	S(I0)	T{
+Output map location 0 is selected for background intensity value, with
+dark background for color and monochrome monitors (default value for
+M0).
+T}
+
+T{
+Screen
+.br
+Control
+T}	S(T0)	T{
+No time delay.
+T}
+
+T{
+Write
+.br
+Control
+T}	W(M1)	T{
+Pixel vector (PV) multiplication of 1.
+T}
+
+T{
+Write
+.br
+Control
+T}	W(P1)	T{
+Solid line selected for writing pattern.
+T}
+
+T{
+Write
+.br
+Control
+T}	W(P(M2))	T{
+Pattern multiplication factor of 2.
+T}
+
+T{
+Write
+.br
+Control
+T}	W(N0)	T{
+Negative pattern control disabled.
+T}
+
+T{
+Write
+.br
+Control
+T}	W(F3)	T{
+Writing enabled to both bit map planes.
+T}
+
+T{
+Write
+.br
+Control
+T}	W(I3)	T{
+Output map location 3 selected for write tasks, resulting in white for
+monochrome, green for color, since these are the default values for M3.
+T}
+
+T{
+Write
+.br
+Control
+T}	W(V)	T{
+Overlay writing in effect.
+T}
+
+T{
+Write
+.br
+Control
+T}	W(S0)	T{
+Shading disabled.
+T}
+
+Text	T(A0)	T{
+Character set containing standard ASCII characters is selected for text
+processing.
+T}
+
+Text	T(S1)	T{
+Standard character cell size 1 is selected for text processing.
+T}
+
+Text	T(S[9,20])	T{
+Display cell size associated with standard character cell size 1.
+T}
+
+Text	T(U[8, 20])	T{
+Unit cell size associated with standard character cell size 1.
+T}
+
+Text	T[+9,+0]	T{
+Character positioning associated with standard character cell size 1.
+T}
+
+Text	T(H2)	T{
+Height multiplication factor of 2.
+T}
+
+Text	T(D0 S1 D0)	T{
+String and character tilt disabled.
+T}
+
+Text	T(I0)	T{
+Italics disabled.
+T}
+
+Text	T(M[1,2])	T{
+Size multiplication factor of 1 for width, and 2 for height.
+T}
+
+Load	L(A1)	T{
+Select set 1 for loading.
+T}
+.TE
+.
+.SS "Screen Control Command Summary"
+.TS
+lB lBX
+lT lXT.
+Command	Description
+
+S (A[X,Y] [X,Y])	T{
+Display addressing; allows defining addressing of screen at different
+size or orientation than actually true for VT240.
+T}
+
+S [X,Y]	T{
+Scroll; uses relative X and Y values to define scrolling of screen data
+within the bit map while leaving coordinate system unchanged.
+T}
+
+S <PV number>	T{
+Scroll; uses PV offset values to define scrolling of screen data within
+the bit map while leaving coordinate system unchanged.
+T}
+
+S (H)	T{
+Hard copy control defining whole screen area is printed.
+T}
+
+S (H[X,Y] [X,Y])	T{
+Hard copy control defining amount of screen to be printed; bracketed
+values are actual screen coordinates used with current cursor location
+used to identify opposing positions to be used to define portion of
+screen to be printed.
+T}
+
+S (H[X,Y])	T{
+Hard copy control defining amount of screen to be printed; bracketed
+values are actual screen coordinates used with current cursor location
+to identify opposing positions defining portion of screen to be printed.
+T}
+
+S (H(P[X,Y]))	T{
+Print offset; defines relative offset value from current printhead
+location to where upper left corner of image is to be printed; [50,0] is
+default at power on, until new value is defined; any new value remains
+in effect until redefined.
+T}
+
+S (M<n>(L<value>))	T{
+Output mapping for changing mono shade values; any or all values can be
+changed in a given command; defines the shade to be stored in selected
+(<n>) output map location.
+T}
+
+S  (M<n>(<RGB>))	T{
+Output mapping for changing color values using RGB specifier; any or all
+values can be changed in a given command; defines the color to be stored
+in selected (<n>) output map location.
+T}
+
+S (M<n>(HLS))	T{
+Output mapping for changing color values using HLS specifier; any or all
+values can be changed in a given command; defines the color to be stored
+in selected (<n>) output map location; default values are HLS values for
+default RGB values.
+T}
+
+S (I<n>)	T{
+Background intensity select; selects output map location (<n>) to be
+used for background.
+T}
+
+S (I(RGB))	T{
+Background intensity select; selects output map location containing
+closest color to RGB value specified.
+T}
+
+S (I(HLS))	T{
+Background intensity select; selects output map location containing
+closest color to HLS value specified.
+T}
+
+S (T<0-255>)	T{
+Time delay; defines number of ticks of real time clock to be counted for
+a delay.
+T}
+
+S (E)	T{
+Screen erase; causes all graphic images on screen to be rewritten at
+current background intensity.
+T}
+
+S (I<value>,E)	T{
+Screen erase to define background intensity; defines a background
+intensity, and erases screen to that value.
+T}
+
+S (W(M<n>))	T{
+Temporary write defining multiplication factor for PV values; defines
+number of coordinates to be affected by each PV value specified for a
+scroll.
+T}
+
+S (C<0 or 1>)	T{
+Graphic Cursor Control; disables (C0) or enables (C1) display of diamond
+cursor.
+T}
+.TE
+.
+.SS "Position Command Summary"
+.TS
+lB lBX
+lT lXT.
+Command	Description
+
+P [X,Y]	T{
+Positioning using [X,Y] values to define a new active position; the
+[X,Y] values can be absolute, relative, or absolute/relative.
+T}
+
+P <PV>	T{
+Positioning using PV values to define a relative repositioning of the
+active position.
+T}
+
+P (W(M<n>))	T{
+Temporary write control defining multiplication factor for PV values;
+defines number of coordinates to be affected by PV values.
+T}
+
+P (B)	T{
+Begin a bounded sequence; causes current active position to be stored
+for reference at the end of the sequence.
+T}
+
+P (S)	T{
+Start an unbounded sequence; causes a dummy position to be stored for
+reference at the end of the sequence.
+T}
+
+P (E)	T{
+End of sequence; causes last stored (B) or (S) value to be referenced;
+if value referenced was stored by a (B), active position will be defined
+by the stored value; if value referenced was stored by (S), active
+position will remain at its current location.
+T}
+
+P [ ]	T{
+Null position; used in conjunction with write tasks to force write tasks
+to begin with first location of pattern memory.
+T}
+.TE
+.
+.SS "Write Control Command Summary"
+.TS
+lB lBX
+lT lXT.
+Command	Description
+
+W(M<n>)	T{
+PV multiplication; defines multiplication factor (<n>) for PV values;
+can be used as temporary write control for other types of commands.
+T}
+
+W(P<0-9>)	T{
+Select standard pattern; selects one of ten stored write patterns for
+write tasks.
+T}
+
+W(P<binary>)	T{
+Specify binary pattern; allows specification of unique writing patterns
+for write tasks. The specified pattern can be up to 8 bits in length.
+T}
+
+W(P(M<1-16>))	T{
+Pattern multiplication; used to define the number of times each bit of
+the pattern memory will be processed. Pattern multiplication can be
+combined with either select standard pattern or the specify binary
+pattern, or by itself, to define a multiplication factor for the last
+specified pattern.
+T}
+
+W(N<0-1>)	T{
+Negative pattern control; when on (N1), allows reversing effect of
+currently selected write pattern.
+T}
+
+W(F<0-3>)	T{
+Foreground plane control; provides a mask which defines which planes of
+the bit map can be written to during write tasks.
+T}
+
+W(I<0-3>)	T{
+Foreground intensity select; defines an output map address (<0-3>) to be
+used for write tasks; writing puts address of that location into bit
+map.
+T}
+
+W(I(<RGB>))	T{
+Foreground intensity select; defines writing tasks to occur using the
+output map address containing the color closest to the RGB value
+specified.
+T}
+
+W(I(<HLS>))	T{
+Foreground intensity; defines writing to occur using output map address
+containing the color closest to the HLS value specified.
+T}
+
+W(V,E,C, or R)	T{
+Four option letters available to define type of writing to occur: (C)
+for complement writing; (E) for erase writing; (R) for replace writing;
+(V) for overlay writing.
+T}
+
+W(S<0-1>)	T{
+Shading on/off control; when on (S1), enables shading at currently
+selected pattern, with the shading reference line defined by the Y axis
+value of the active position when (S1) is invoked.
+T}
+
+W(S[,Y])	T{
+Shading reference line select; selects a horizontal shading reference
+line defined by [,Y], which can be either an absolute or relative value.
+T}
+
+W(S(x) [X])	T{
+Shading reference line select; selects a vertical shading reference line
+defined by [X], which can be either an absolute or relative value.
+T}
+
+W(S'<character>')	T{
+Shading character select; allows graphic objects to be filled using the
+character specified.
+T}
+.TE
+.
+.SS "Vector Commands Summary"
+.TS
+lB lBX
+lT lXT.
+Command	Description
+
+V [ ]	T{
+Draw dot; used to write to a single pixel defined by current active
+position; no cursor movement occurs.
+T}
+
+V [X,Y]	T{
+Draw line using [X,Y] value to define a position to which a line is to
+be drawn from the current active position; the [X,Y] value can be an
+absolute, relative, or absolute/relative positioning value.
+T}
+
+V <PV>	T{
+Draw line using PV values to define a position to which a line is to be
+drawn, relative to the current active position, in the direction defined
+by the PV value.
+T}
+
+V (B)	T{
+Begin a bounded sequence; causes current active position to be stored
+for reference at the end of the sequence.
+T}
+
+V (S)	T{
+Start an unbounded sequence; causes a dummy position to be stored for
+reference at the end of the sequence.
+T}
+
+V (E)	T{
+End of sequence; causes last stored (B) or (S) value to be referenced;
+If value referenced was stored by a (B), a line is drawn from the active
+position where (E) is sensed, to the location stored by (B); If value
+referenced was stored by (S), no line is drawn, and active position
+remains at current position.
+T}
+
+V (W (<suboptions>))	T{
+Temporary write control; used to invoke write control values different
+from those currently in effect, without altering those write control
+values; temporary write control values remain in effect only for the
+duration of write tasks they are invoked for.
+T}
+.TE
+.
+.SS "Curve Commands Summary"
+.TS
+lB lBX
+lT lXT.
+Command	Description
+
+C [X,Y]	T{
+Circle with center at current position; [X,Y] defines a point on the
+circumference of the circle; the specified [X,Y] value can be absolute,
+relative, or absolute/relative position.
+T}
+
+C (C) [X,Y]	T{
+Circle with center at specified position; [X,Y] defines a point to serve
+as the circle center, while current active position defines a point on
+the circumference; the [X,Y] value can be absolute, relative, or
+absolute/relative position.
+T}
+
+C (A<degrees>) [X,Y]	T{
+Arc with center at current position; [X,Y] defines the starting point
+for drawing the arc, while the signed value of the <degrees> (+ or \-)
+determines which direction the arc will be drawn from that point: + for
+counterclockwise, and \- for clockwise; the [X,Y] value can be absolute,
+relative, or absolute/relative position.
+T}
+
+C (A<degrees>C) [X,Y]	T{
+Arc with center at specified position; [X,Y] defines the center, while
+the current active position is the point from which the arc is drawn;
+The signed value of <degrees> (+ or \-) determines which direction the
+arc will be drawn: + for counterclockwise, and \- for clockwise; The
+[X,Y] value can be absolute, relative, or absolute/relative position.
+T}
+
+C (B)<positions> (E)	T{
+Closed curve sequence; used to define a closed curve graphic image built
+from interpolation of [X,Y] positions specified within the option; the
+[X,Y] values specified can be absolute, relative, or absolute/relative.
+T}
+
+C (S)<positions> (E)	T{
+Open curve sequence; used to define an open curve graphic image built
+from interpolation of [X,Y] positions specified within the option; the
+[X,Y] values specified can be absolute, relative, or absolute/relative.
+T}
+
+C [ ]	T{
+Null position; used with either open or closed sequence to affect
+interpolation; [] will cause a position equal to the last specified
+active position to be stored as part of the positions to be
+interpolated; when used as the beginning of a sequence, the value stored
+will be the current active position.
+T}
+
+C (W (<subpositions>))	T{
+Temporary write control; used to invoke write control different from
+those currently in effect, without altering the overall write control
+values; temporary write control values remain in effect only for the
+duration of write tasks they are invoked for.
+T}
+.TE
+.
+.SS "Text Command Summary"
+.TS
+lB lBX
+lT lXT.
+Command	Description
+
+T \(aqtext\(aq	T{
+Text string; provides identification of text to be displayed; Text
+string characters must be delimited by either single quotes ('text'), or
+double quotes ("text").
+T}
+
+T (A<0-3>)	T{
+Character set; defines which of four possible character sets (<0-3>) is
+to be used for processing text string characters.
+T}
+
+T (S<0-16>)	T{
+Standard character cell size; defines a set of display cell, unit cell,
+and character positioning, values to be used in processing text string
+characters; any one of 17 different sets (<0-16>) can be invoked.
+T}
+
+T (S [<width,height>])	T{
+Display cell size; allows varying size of cell used for text string
+characters; default value comes from screen coordinate value associated
+with the standard character cell size default of (S1); if specified in
+pixels, [9,20] is [9,10].
+T}
+
+T [X,Y]	T{
+Character positioning; allows varying of positioning between text string
+characters; default value comes from position value associated with the
+standard character cell size default of (S1); [X,Y] values are relative.
+T}
+
+T (U [<width,height>])	T{
+Unit cell size; allows varying size of unit used for text string
+characters; default value comes from screen coordinate value associated
+with the standard character cell size default of (S1). In pixels, [8,20]
+is [8,10].
+T}
+
+T (H<1-25>)	T{
+Height multiplier; when invoked, the height multiplier will change the
+display cell and unit cell size height values to a value equal to 10
+times the specified multiplier ([1-25]), without affecting width values,
+or positioning.
+T}
+
+T (D<a> S<0-16>)	T{
+String tilt; used to define a tilt of text string characters, as a
+whole, relative to the normal horizontal baseline; <a> defines the
+degrees of tilt; <0-16> provides a standard set value from which
+positioning during the tilt can be computed.
+T}
+
+T (D<a> S<0-16> D a)	T{
+String/character tilt; used to define separate tilt values for the
+string, and the characters in the text string; the first <a> defines the
+degrees of tilt for the string; the second <a> defines the degrees of
+tilt for the characters int he string; <0-16> provides a standard set
+value from which positioning during the tilt can be computed.
+T}
+
+T (I<a>)	T{
+Italics; defines a degree of tilt (<a>) for characters without changing
+their orientation to the current baseline.
+T}
+
+T (B)<options>(E)	T{
+Temporary text control; allows selecting text values which differ from
+those currently defined, without affecting the current values; the
+temporary values remain in effect until (E) is invoked.
+T}
+
+T <PV>	T{
+PV spacing; Uses PV values to enable superscript, subscript, and
+overstrike functions.
+T}
+
+T (W (<options>))	T{
+Temporary write control; used to invoke write control values different
+from those currently in effect, without altering the overall write
+control values; temporary write control values are only in effect for
+the text command they are invoked for.
+T}
+
+T (M [width,height])	T{
+Size multiplication; provides multiplication factors for the height and
+width values of the unit cell size associated with standard cell size 1;
+the minimum multiplication for height and width is 1; the maximum
+multiplication is 16 for width and 127 for height.
+T}
+.TE
+.
+.SS "Load Command Summary"
+.TS
+lB lBX
+lT lXT.
+Command	Description
+
+L (A<1-3>)	T{
+Select set; defines which of the three loadable character sets is to be
+selected for any subsequent load cell activity.
+T}
+
+L (A\(dq<name>\(dq)	T{
+Specify name; provides a name (\(dq<name>\(dq) of up to ten characters in
+length to be applied to the currently selected set; specify name can be
+combined with the select set: (A<1-3> \(dq<name>\(dq).
+T}
+
+L \(dq<ASCII>\(dq <hex pairs>	T{
+Load cell; used to generate characters to be stored in the selected set;
+\(dq<ASCII>\(dq is a single ASCII character which provides an identity
+for the character cell; <hex pairs> are used to define the bit pattern
+of the character to be stored on line-by-line basis.
+T}
+.TE
+.
+.SS "Macrograph Summary"
+.TS
+lB lBX
+lT lXT.
+Syntax	Description
+
+@<letter>	T{
+Invoke macrograph; causes content of the selected macrograph (<letter>),
+a single case insensitive letter, to be invoked on the screen starting
+at the current cursor location.
+T}
+
+@:<letter> <definition>@;	T{
+Define macrograph; defines the single, case insensitive letter the
+macrograph is to be stored under, and the definition to be stored.
+T}
+
+@.	T{
+Clear all macrographs; when invoked, deletes stored macrograph
+descriptions from all 26 macrograph storage locations.
+T}
+
+@:<letter>@;	T{
+Clear defined macrograph; used to clear the contents of a single
+macrograph storage location; this option is actually a define macrograph
+option invoked with no definition.
+T}
+.TE
+.
+.SS "Report Command Summary"
+.TS
+lB lBX
+lT lXT.
+Command	Description
+
+R (P)	T{
+Cursor position; causes reporting of the current active position.
+T}
+
+R (M  (<letter>))	T{
+Macrograph contents; causes reporting of the contents of the specified
+macrograph storage location.
+T}
+
+R (M (=))	T{
+Macrograph storage status; causes reporting of how much space has been
+assigned to macrograph storage, and how much of that space is currently
+free.
+T}
+
+R (L)	T{
+Character set; cause reporting of set currently selected for loading.
+T}
+
+R (E)	T{
+Error; causes reporting of the last error encountered by the parser.
+T}
+
+R (P (I))	T{
+Report position interactive; places VT240 in a mode where cursor can be
+repositioned from the keyboard.
+T}
+.TE
+.
+.SS "Report Command Error Condition Option Response"
+.TS
+lB lB lBX
+lT lT lXT.
+Code	Condition	Description
+
+0	No Error	T{
+No error has been detected since the last resynchronization character
+(;); a 0 will be reported as the error character (<M>).
+T}
+
+1	T{
+Ignore
+.br
+Character
+T}	T{
+AN unexpected character was encountered, and ignored; the error
+character (<M>) will represent the character ignored.
+T}
+
+2	T{
+Extra Option
+.br
+Coordinates
+T}	T{
+The syntax S(H[X,Y][X,Y]) contained more than two coordinate pairs; the
+extra coordinate pairs were ignored; always returns 0 for the error
+character (<M>).
+T}
+
+3	T{
+Extra
+.br
+Coordinate
+.br
+Elements
+T}	T{
+The syntax [X,Y] contained more than two coordinate elements, all but
+the first two elements were ignored; always returns 0 as the error
+character (<M>).
+T}
+
+4	T{
+Alphabet
+.br
+Out Of
+.br
+Range
+T}	T{
+The syntax L(A<0-3>) contained a number less than 0 or greater than 3;
+always returns 0 for the error character (<M>).
+T}
+
+5	Reserved
+
+6	Reserved
+
+7	T{
+Begin/Start
+.br
+Overflow
+T}	T{
+The stacking limit of 16 (B) and (S) position and/or vector commands was
+exceeded; Subsequent (B) or (S) commands were ignored; the error
+character (<M>) represents either a B or an S.
+T}
+
+8	T{
+Begin/Start
+.br
+Underflow
+T}	T{
+A position or vector command (E) was encountered with no corresponding
+(B) or (S) option preceding it; the (E) option is ignored; the error
+character (<M>) represents the E option letter.
+T}
+
+9	T{
+Text
+.br
+Standard
+.br
+Size Error
+T}	T{
+A standard set number of less than 0 or greater than 16 was attempted by
+a text command standard set select; always returns 0 as the error
+character (<M>).
+T}
+.TE
+.
+.SH "4010/4014"
+.SS "Entering/Exiting 4010/4014 Mode"
+There are two ways to enter and exit 4010/4014 mode: using set-up or
+escape sequences.
+.P
+.TS
+lB lB
+l l.
+Sequence	Function
+
+CSI ? 3 8 h	Enters 4010/4014 mode.
+
+CSI ? 3 8 l	Exits 4010/4014 mode.
+.TE
+.P
+.RS
+.B NOTE:
+.B The VT240 enters 4010/4014 in alpha mode, and exits 4010/4014 to the
+.B VT200, 7-bit control mode.
+.RE
+.
+.SS "Alpha Mode Summary"
+.TS
+l lX.
+ESC	Set LCE
+ESC NUL	Set LCE
+ESC ESC	Set LCE
+ESC ENQ	Set bypass and return terminal status
+BEL	Ring bell
+ESC BEL	Ring bell
+BS	Move one space left
+ESC BS	Move one space left
+HT	Move one space right
+ESC HT	Move one space right
+LF	Move one line down
+ESC LF	Set LCE. Ignore filler LF and CR
+ESC CR	Set LCE. Ignore filler LF and CR
+VT	Move one line up
+ESC VT	Move one line up
+ESC FF	Erase and home (page)
+CR	Move to left margin
+ESC ETB	Make copy
+ESC CAN	Set bypass condition
+ESC SUB	Set GIN and bypass condition
+FS	Set point plot
+ESC FS	Set point plot
+GS	Set graph and dark vector
+ESC GS	Set graph and dark vector
+RS	Set incremental plot
+ESC RS	Set incremental plot
+SP	Move one space right
+ESC 0	Select smallest character size
+ESC :	Select smallest character size
+ESC ;	Select smallest character size
+ESC 1	Select small character size
+ESC 8	Select small character size
+ESC 9	Select small character size
+ESC 2	Select large character size
+ESC 3	Select largest character size
+ESC DEL	Set LCE.
+.TE
+.P
+.RS
+.B NOTE:
+.IP "\fB1.\fR" 3
+.B LCE is a flag indicating an escape sequence introduction condition.
+.IP "\fB2.\fR" 3
+.B All non-control ASCII characters are print characters in Alpha mode.
+.RE
+.
+.SS "Graph and Point Plot Mode Summary"
+.TS
+l lX.
+ESC NUL	Set LCE
+ESC ENQ	Set bypass and return terminal status
+BEL	Ring bell
+ESC LF	Set LCE and ignore filler LFs and CRs
+ESC FF	Erase and home and go to Alpha
+CR	Set Alpha and lift
+ESC ETB	Make copy
+ESC CAN	Set bypass condition
+ESC SUB	Set GIN and bypass condition
+FS	Set point plot
+ESC FS	Set point plot
+GS	Set graph and do a dark vector
+ESC GS	Set graph and do a dark vector
+RS	Set incremental plot
+ESC RS	Set incremental plot
+US	Set Alpha mode
+ESC US	Set Alpha mode
+SP	High X or high Y coordinate value
+!	High X or high Y coordinate value
+\(dq	High X or high Y coordinate value
+#	High X or high Y coordinate value
+$	High X or high Y coordinate value
+%	High X or high Y coordinate value
+&	High X or high Y coordinate value
+\(aq	High X or high Y coordinate value
+(	High X or high Y coordinate value
+)	High X or high Y coordinate value
+*	High X or high Y coordinate value
++	High X or high Y coordinate value
+,	High X or high Y coordinate value
+\-	High X or high Y coordinate value
+\.	High X or high Y coordinate value
+/	High X or high Y coordinate value
+0	High X or high Y coordinate value
+1	High X or high Y coordinate value
+2	High X or high Y coordinate value
+3	High X or high Y coordinate value
+4	High X or high Y coordinate value
+5	High X or high Y coordinate value
+6	High X or high Y coordinate value
+7	High X or high Y coordinate value
+8	High X or high Y coordinate value
+9	High X or high Y coordinate value
+:	High X or high Y coordinate value
+;	High X or high Y coordinate value
+<	High X or high Y coordinate value
+\&=	High X or high Y coordinate value
+>	High X or high Y coordinate value
+?	High X or high Y coordinate value
+@	High X or high Y coordinate value
+[	Low Y coordinate value
+\(rs	Low Y coordinate value
+]	Low Y coordinate value
+\(ha	Low Y coordinate value
+\&_	Low Y coordinate value
+ESC	Set Normal, Solid Vector
+ESC a	Set Normal, Dotted Vector
+ESC b	Set Normal, Dot-Dashed Vector
+ESC c	Set Normal, Short Dashed Vector
+ESC d	Set Normal, Long Dashed Vector
+ESC e	Set Normal, Solid Vector
+ESC f	Set Normal, Solid Vector
+ESC g	Set Normal, Solid Vector
+ESC h	Set Bold, Solid Vector
+ESC i	Set Bold, Dotted Vector
+ESC j	Set Bold, Dot-Dashed Vector
+ESC k	Set Bold, Short Dashed Vector
+ESC l	Set Bold, Long Dashed Vector
+ESC m	Set Bold, Solid Vector
+ESC n	Set Bold, Solid Vector
+ESC o	Set Bold, Solid Vector
+    {	Low Y
+    [	Low Y
+    ]	Low Y
+    _	Low Y
+DEL	Low Y or NO-OP (note 2)
+ESC ?	Low Y (note 2)
+ESC DEL	Set LCE
+.TE
+.P
+.RS
+.B NOTE:
+.IP "\fB1.\fR" 3
+.B LCE is a flag indicating an escape sequence introduction condition.
+.IP "\fB2.\fR" 3
+.B The effect of DEL as a Low Y character can be disabled by the DEL
+.B implies Low Y option in graphics set-up; if DEL cannot be used, the
+.B program can substitute ESC ? which performs the same function as DEL.
+.IP "\fB3.\fR" 3
+.B All uppercase alphabetical characters can be used for High X or High
+.B Y coordinate values.
+.IP "\fB4.\fR" 3
+.B All lowercase alphabetical characters can be used for Low Y
+.B coordinate values.
+.RE
+.
+.SS "Incremental Plot Mode"
+.TS
+l lX.
+ESC NUL	Set LCE (note 1)
+ESC ENQ	Set bypass and return terminal status
+ESC BEL	Ring bell
+ESC LF	Set LCE and ignore filler LF's and CR's
+ESC CR	Set LCE and ignore filler LF's and CR's
+ESC FF	Go Alpha and erase and home
+CR	Set Alpha and left margin
+ESC ETB	Make copy
+ESC CAN	Set bypass
+ESC SUB	Set bypass and GIN
+ESC	Set LCE
+ESC ESC	Set LCE
+FS	Set point plot mode
+ESC FS	Set point plot mode
+GS	Set graph mode
+ESC GS	Set graph mode
+US	Set Alpha mode
+ESC US	Set Alpha mode
+Space	Turn beam off (pen up)
+P	Turn beam on (pen down)
+D	Move up (north)
+E	Move up, right (northeast)
+A	Move right (east)
+I	Move down, right (southeast)
+H	Move down (south)
+J	Move down, left (southwest)
+B	Move left (west)
+F	Move up, left (northwest)
+.TE
+.
+.SS "GIN Mode"
+GIN mode is exited from keyboard only. While in GIN, only arrow keys are
+used (either shifted or unshifted) to reposition cross hair cursor. GIN
+mode is exited by activating any key normally active in VT100 mode. GIN
+mode exits to Alpha mode.
+.
+.SS "Bypass Condition"
+.TS
+l lX.
+ESC ENQ	Set Bypass and return terminal status
+ESC CAN	Set Bypass with no other action
+ESC SUB	Set Bypass and go to GIN
+BEL	Clear bypass and ring bell (if enabled)
+ESC BEL	Clear bypass and ring bell (if enabled)
+LF	Clear bypass and cause new line
+ESC LF	Clear bypass, set LCE, and ignore filler LFs and CRs
+ESC CR	Clear bypass, set LCE, and ignore filler LFs and CRs
+CR	Clear bypass, move cursor to left margin, and go to Alpha
+US	Clear bypass and go to graph
+ESC US	Clear bypass and go to graph
+ESC ETB	Clear bypass and make copy
+ESC FF	Clear bypass, go to Alpha, and clear screen and home
+.TE
+.P
+.RS
+.B NOTE:
+.IP "\fB1.\fR" 3
+.B LCE is flag indicating an escape sequence introduction condition.
+.IP "\fB2.\fR" 3
+.B NEXT SCREEN key performs same function as ESC FF.
+.
+.
+.SH "NOTE"
+This man-page was transferred from the hardcopy DEC manual
+EK-VT240-HR-001
+.I VT240 Series Programmer Pocket Guide
+(1st Edition, September 1983).
+.P
+Obvious spelling, typesetting, and other errors were corrected.
+.
+.SH "SEE ALSO"
+.MR vt240 1 ,
+.MR vt240 7
+.
+.\" Another hack to get rid of the page size in nroff mode
+.if n .pl (\n[nl]u+2)
