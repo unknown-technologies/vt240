@@ -282,13 +282,6 @@ void key_handler(GLFWwindow* window, int key, int scancode, int action, int mods
 					toggle_fullscreen();
 				}
 				break;
-			case GLFW_KEY_F5:
-				if(mods & (GLFW_MOD_CONTROL | GLFW_MOD_ALT)) {
-					VT240KeyboardKeyDown(&vt, key);
-				} else {
-					glfwSetWindowShouldClose(window, GLFW_TRUE);
-				}
-				break;
 			default:
 				VT240KeyboardKeyDown(&vt, key);
 				break;
@@ -296,7 +289,6 @@ void key_handler(GLFWwindow* window, int key, int scancode, int action, int mods
 	} else if(action == GLFW_RELEASE) {
 		switch(key) {
 			case GLFW_KEY_F2:
-			case GLFW_KEY_F5:
 				if(mods & (GLFW_MOD_CONTROL | GLFW_MOD_ALT)) {
 					VT240KeyboardKeyUp(&vt, key);
 				}
@@ -353,6 +345,11 @@ static void telnet_tx(unsigned char c)
 static void pty_tx(unsigned char c)
 {
 	PTYSend(&pty, c);
+}
+
+static void pty_brk(void)
+{
+	PTYBreak(&pty);
 }
 
 static void pty_resize(unsigned int width, unsigned int height)
@@ -606,6 +603,7 @@ int main(int argc, char** argv, char** envp)
 
 		pty.rx = vt_rx;
 		vt.rx = pty_tx;
+		vt.brk = pty_brk;
 		vt.resize = pty_resize;
 	}
 

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <termios.h>
@@ -243,6 +244,22 @@ void PTYSend(PTY* pty, unsigned char c)
 		PTYError(pty, "write");
 		close(pty->master);
 		pty->master = -1;
+	}
+}
+
+/* This is a poor man's emulation of a BREAK: just send SIGINT to the
+ * current foreground process, since there is no real tcsendbreak on a
+ * PTY on Linux. A real BREAK would most likely be interpreted via
+ * BRKINT as a SIGINT for the foreground process. */
+void PTYBreak(PTY* pty)
+{
+	if(pty->master == -1) {
+		return;
+	}
+
+	pid_t pid = tcgetpgrp(pty->master);
+	if(pid > 1) {
+		killpg(pid, SIGINT);
 	}
 }
 
