@@ -36,19 +36,21 @@
 #define	STATE_DCS_ESC		6
 #define	STATE_SIXEL		7
 #define	STATE_SIXEL_ESC		8
-#define	STATE_DCA1		9
-#define	STATE_DCA2		10
-#define	STATE_G			11
-#define	STATE_ESC_SP		12
-#define	STATE_CSI_GT		13
-#define	STATE_CSI_QUOT		14
-#define	STATE_CSI_EXCL		15
-#define	STATE_DECUDK		16
-#define	STATE_DECUDK_ESC	17
-#define	STATE_DECUDK_ODD	18
-#define	STATE_DECUDK_ODD_ESC	19
-#define	STATE_DECUDK_EVEN	20
-#define	STATE_DECUDK_EVEN_ESC	21
+#define	STATE_SIXEL_REPEAT	9
+#define	STATE_SIXEL_COLOR	10
+#define	STATE_DCA1		11
+#define	STATE_DCA2		12
+#define	STATE_G			13
+#define	STATE_ESC_SP		14
+#define	STATE_CSI_GT		15
+#define	STATE_CSI_QUOT		16
+#define	STATE_CSI_EXCL		17
+#define	STATE_DECUDK		18
+#define	STATE_DECUDK_ESC	19
+#define	STATE_DECUDK_ODD	20
+#define	STATE_DECUDK_ODD_ESC	21
+#define	STATE_DECUDK_EVEN	22
+#define	STATE_DECUDK_EVEN_ESC	23
 
 static const VT240NVR default_config = { 0 };
 
@@ -577,10 +579,10 @@ void VT240ScrollUp(VT240* vt)
 	int startgx = (vt->margin_top + 1) * CHAR_HEIGHT * FRAMEBUFFER_WIDTH;
 	int endgx = (vt->margin_bottom + 1) * CHAR_HEIGHT * FRAMEBUFFER_WIDTH;
 	for(int i = startgx; i < endgx; i++) {
-		vt->framebuffer[i - FRAMEBUFFER_WIDTH] = vt->framebuffer[i];
+		vt->framebuffer[i - FRAMEBUFFER_WIDTH * CHAR_HEIGHT] = vt->framebuffer[i];
 	}
 	endgx = vt->margin_bottom * CHAR_HEIGHT * FRAMEBUFFER_WIDTH;
-	memset(&vt->framebuffer[end], 0, FRAMEBUFFER_WIDTH * sizeof(u32));
+	memset(&vt->framebuffer[endgx], 0, CHAR_HEIGHT * FRAMEBUFFER_WIDTH * sizeof(u32));
 	vt->fb_dirty = 1;
 }
 
@@ -2434,6 +2436,8 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 					vt->sixel_bg = vt->parameters[1];
 					vt->sixel_x = 0;
 					vt->sixel_y = 0;
+					vt->sixel_color = 0;
+					memset(vt->sixel_palette, 0xFF, 256 * sizeof(u32));
 					break;
 				case '|':
 					if(!vt->vt100_mode) {
@@ -2512,6 +2516,15 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 				case ST:
 					vt->state = STATE_TEXT;
 					break;
+				case '!':
+					vt->state = STATE_SIXEL_REPEAT;
+					vt->parameters[0] = 0;
+					break;
+				case '#':
+					vt->state = STATE_SIXEL_COLOR;
+					vt->parameter_id = 0;
+					memset(vt->parameters, 0, MAX_PARAMETERS * sizeof(u16));
+					break;
 				case '$':
 					/* sixel cursor */
 					vt->sixel_x = 0;
@@ -2534,9 +2547,10 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 						}
 						u8 bits = c - '?';
 						u32* sixel = &vt->framebuffer[(vt->cursor_y * CHAR_HEIGHT + vt->sixel_y) * FRAMEBUFFER_WIDTH + vt->cursor_x * width + offset + vt->sixel_x];
+						u32 fg = vt->sixel_palette[vt->sixel_color];
 						for(unsigned int i = 0; i < 6; i++) {
 							if(bits & 1) {
-								*sixel = 0xFFFFFFFF;
+								*sixel = fg;
 							} else if(vt->sixel_bg != 1) {
 								*sixel = 0;
 							}
@@ -2569,6 +2583,153 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 					if((c + 0x40) >= 0x80 && (c + 0x40) < 0xA0) {
 						VT240ProcessCharVT240(vt, c + 0x40);
 					}
+					break;
+			}
+			break;
+		case STATE_SIXEL_REPEAT:
+			switch(c) {
+				case ESC:
+					vt->state = STATE_SIXEL_ESC;
+					break;
+				case CAN:
+					vt->state = STATE_TEXT;
+					break;
+				case SUB:
+					vt->state = STATE_TEXT;
+					VT240Substitute(vt);
+					break;
+				case ST:
+					vt->state = STATE_TEXT;
+					break;
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9':
+					vt->parameters[0] *= 10;
+					vt->parameters[0] += c - '0';
+					break;
+				default:
+					vt->state = STATE_SIXEL;
+					if(c >= '?' && c <= '~') {
+						unsigned int count = vt->parameters[0];
+						unsigned int width = VT240GetCellWidth(vt);
+						unsigned int offset = VT240GetCellOffset(vt);
+
+						if(vt->cursor_x * width + offset + vt->sixel_x >= FRAMEBUFFER_WIDTH) {
+							return;
+						}
+
+						unsigned int start_x = vt->cursor_x * width + offset + vt->sixel_x;
+						if(start_x + count >= FRAMEBUFFER_WIDTH) {
+							count = FRAMEBUFFER_WIDTH - start_x;
+						}
+
+						u8 bits = c - '?';
+						u32 fg = vt->sixel_palette[vt->sixel_color];
+
+						u32* sixel = &vt->framebuffer[(vt->cursor_y * CHAR_HEIGHT + vt->sixel_y) * FRAMEBUFFER_WIDTH + vt->cursor_x * width + offset + vt->sixel_x];
+
+						for(unsigned int i = 0; i < 6; i++) {
+							if(bits & 1) {
+								for(unsigned int n = 0; n < count; n++) {
+									sixel[n] = fg;
+								}
+							} else if(vt->sixel_bg != 1) {
+								for(unsigned int n = 0; n < count; n++) {
+									sixel[n] = 0;
+								}
+							}
+							bits >>= 1;
+							sixel += FRAMEBUFFER_WIDTH;
+						}
+
+						vt->fb_dirty = 1;
+						vt->sixel_x += count;
+					}
+					break;
+			}
+			break;
+		case STATE_SIXEL_COLOR:
+			switch(c) {
+				case ESC:
+					vt->state = STATE_DCS_ESC;
+					break;
+				case CAN:
+					vt->state = STATE_TEXT;
+					break;
+				case SUB:
+					vt->state = STATE_TEXT;
+					VT240Substitute(vt);
+					break;
+				case ST:
+					vt->state = STATE_TEXT;
+					break;
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9':
+					vt->parameters[vt->parameter_id] *= 10;
+					vt->parameters[vt->parameter_id] += c - '0';
+					break;
+				case ';':
+					vt->parameter_id++;
+					if(vt->parameter_id == MAX_PARAMETERS) {
+						vt->parameter_id--;
+						vt->parameters[vt->parameter_id] = 0;
+					}
+					break;
+				default:
+					vt->state = STATE_SIXEL;
+					if(vt->parameter_id == 0) {
+						/* select color */
+						vt->sixel_color = vt->parameters[0];
+					} else {
+						u16 color_id = vt->parameters[0];
+						u16 type = vt->parameters[1];
+						u16 x = vt->parameters[2];
+						u16 y = vt->parameters[3];
+						u16 z = vt->parameters[4];
+
+						/* assume RGB by default */
+						if(type != 1 && type != 2) {
+							type = 2;
+						}
+
+						/* assume color_id 0 by default */
+						if(color_id > 255) {
+							color_id = 0;
+						}
+
+						if(type == 1) {
+							/* HLS */
+							/* TODO: implement as HLS! */
+							u8 r = (((u32) x) * 255) / 100;
+							u8 g = (((u32) y) * 255) / 100;
+							u8 b = (((u32) z) * 255) / 100;
+							u32 color = 0xFF000000 | (r << 16) | (g << 8) | b;
+							vt->sixel_palette[color_id] = color;
+						} else if(type == 2) {
+							/* RGB */
+							u8 r = (((u32) x) * 255) / 100;
+							u8 g = (((u32) y) * 255) / 100;
+							u8 b = (((u32) z) * 255) / 100;
+							u32 color = 0xFF000000 | (r << 16) | (g << 8) | b;
+							vt->sixel_palette[color_id] = color;
+						}
+					}
+					VT240ProcessCharVT240(vt, c);
 					break;
 			}
 			break;

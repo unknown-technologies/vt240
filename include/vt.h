@@ -282,6 +282,9 @@ typedef struct {
 	int		sixel_x;
 	int		sixel_y;
 
+	u8		sixel_color;
+	u32		sixel_palette[256];
+
 	/* saved state */
 	int		saved_cursor_x;
 	int		saved_cursor_y;

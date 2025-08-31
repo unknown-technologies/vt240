@@ -359,7 +359,9 @@ void main(void)
 	}
 
 	// get color from graphics framebuffer
-	vec3 graphics = fb.rgb * colorscheme[VT240GetColor(0u, false).y];
+	//vec3 graphics = fb.rgb * colorscheme[VT240GetColor(0u, false).y];
+	// TODO: implement frame buffer with 2-bit planes and 4 color palette here
+	vec3 graphics = fb.rgb;
 
 	vec3 result = (text_color + graphics) * intensity;
 
