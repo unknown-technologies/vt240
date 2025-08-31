@@ -320,6 +320,12 @@ void TELNETSend(TELNET* telnet, unsigned char c)
 	}
 }
 
+void TELNETBreak(TELNET* telnet)
+{
+	TELNETSendRaw(telnet, IAC);
+	TELNETSendRaw(telnet, BRK);
+}
+
 void TELNETSendRaw(TELNET* telnet, unsigned char c)
 {
 	if(telnet->socket == -1) {

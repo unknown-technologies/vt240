@@ -23,6 +23,7 @@ void TELNETInit(TELNET* telnet);
 void TELNETConnect(TELNET* telnet, const char* hostname, int port);
 void TELNETDisconnect(TELNET* telnet);
 void TELNETSend(TELNET* telnet, unsigned char c);
+void TELNETBreak(TELNET* telnet);
 void TELNETSendRaw(TELNET* telnet, unsigned char c);
 void TELNETPoll(TELNET* telnet);
 

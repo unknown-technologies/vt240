@@ -342,6 +342,11 @@ static void telnet_tx(unsigned char c)
 	TELNETSend(&telnet, c);
 }
 
+static void telnet_brk(void)
+{
+	TELNETBreak(&telnet);
+}
+
 static void pty_tx(unsigned char c)
 {
 	PTYSend(&pty, c);
@@ -591,6 +596,7 @@ int main(int argc, char** argv, char** envp)
 		TELNETInit(&telnet);
 		telnet.rx = vt_rx;
 		vt.rx = telnet_tx;
+		vt.brk = telnet_brk;
 
 		TELNETConnect(&telnet, hostname, port);
 	} else if(shell) {
