@@ -6,8 +6,8 @@ const int width  = 800;
 const int height = 240;
 
 uniform float focus = 0.75;
-uniform float glow_control = 0.9;
-uniform float glow_intensity = 0.5;
+const float glow_control = 0.9;
+const float glow_intensity = 0.5;
 
 uniform sampler2D vt240_screen;
 uniform usampler2D vt240_mask;
