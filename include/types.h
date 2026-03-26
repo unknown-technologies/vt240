@@ -15,9 +15,13 @@
 #define	f32	float
 #define	f64	double
 
+#ifdef __EMSCRIPTEN__
+#include <stdbool.h>
+#else
 typedef	char	bool;
 #define	true	1
 #define	false	0
+#endif
 
 #define	BOOL	int
 #define	TRUE	1
