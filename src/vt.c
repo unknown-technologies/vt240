@@ -3328,7 +3328,20 @@ void VT240ProcessCharVT52(VT240* vt, unsigned char c)
 				default:
 					vt->parameters[1] = c - 0x1F;
 					vt->state = STATE_TEXT;
-					VT240SetCursor(vt, vt->parameters[0], vt->parameters[1]);
+
+					/* Special handling:
+					 * - if the line is out of range, it is not updated
+					 * - if the column is out of range, it is not updated */
+					/* See: DEC 070 (VSRM - VT52 Emulation EL-00070-0A, page A-28) */
+					unsigned int line = vt->parameters[0];
+					unsigned int column = vt->parameters[1];
+					if(line < 1 || line > vt->lines) {
+						line = vt->cursor_y + 1;
+					}
+					if(column < 1 || column > vt->columns) {
+						column = vt->cursor_x + 1;
+					}
+					VT240SetCursor(vt, line, column);
 			}
 			break;
 	}
