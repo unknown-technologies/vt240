@@ -3,7 +3,8 @@
 .\" FIXME: This is an ugly hack to avoid strange space in tables caused
 .\" by invisible page breaks.
 .\" The hack sets the page size to "very large"
-.if n .pl 32767u
+.\".if n .pl 32767u
+.if n .pl 262144u
 .
 .\" Bulleted paragraph
 .de bP
@@ -36,30 +37,77 @@
 .\" paragraphs. This means there is *no* paragraph break between such
 .\" lines. It is intended for bullet point lists without empty lines
 .\" in-between.
-.de1 TL
-.\".  an-break-paragraph
-.  if \\n[.$] .nr an-prevailing-indent (n;\\$1)
-.  itc 1 an-input-trap
-.  in 0
-.  if !\\n[an-is-in-diversion] \{\
+.\" Since groff updates broke this at some point, there is an if/else
+.\" as well as a fallback which should always work although this
+.\" fallback will not indent wrapped lines.
+.ie d an*break-paragraph \{\
+.  de1 TL
+.  \"  an*break-paragraph
+.    if \\n[.$] .nr an-prevailing-indent (n;\\$1)
+.    if '\\n[.z]'an*paragraph-tag' \{\
+.      an-warn cannot nest .\\$0 or .TQ inside .\\$0; supply a tag
+.      return
+.    \}
+.    nr an*have-paragraph-tag 1
+.    itc 1 an*input-trap
+.    in 0
 .    ll -\\n[an-margin]u
-.    di an-div
+.    nr an*saved-adjustment-mode \\n[.j]
+.    di an*paragraph-tag
 .    na
-.  \}
-.  nr an-is-in-diversion 1
-..
-.de1 IL
-.\".  an-break-paragraph
-.  ie !\\n[.$] \{\
-.    ne (1v + 1u)
-.    in (\\n[an-margin]u + \\n[an-prevailing-indent]u)
+.  .
+.
+.  de1 IL
+.    nr an*enforce-tag-separation 0
+.  \"  an*break-paragraph
+.    ie !\\n[.$] \{\
+.      ne (1v + 1u)
+.      in (\\n[an-margin]u + \\n[an-prevailing-indent]u)
+.    \}
+.    el \{\
+.      ie (\\n[.$] > 1) .TL "\\$2"
+.      el               .TL
+.      nop \&\\$1
+.    \}
+.    nr an*enforce-tag-separation 1
+.  .
+.\}
+.el \{\
+.  ie d an-break-paragraph \{\
+.    de1 TL
+.    \"  an-break-paragraph
+.      if \\n[.$] .nr an-prevailing-indent (n;\\$1)
+.      itc 1 an-input-trap
+.      in 0
+.      if !\\n[an-is-in-diversion] \{\
+.        ll -\\n[an-margin]u
+.        di an-div
+.        na
+.      \}
+.      nr an-is-in-diversion 1
+.    .
+.    de1 IL
+.    \"  an-break-paragraph
+.      ie !\\n[.$] \{\
+.        ne (1v + 1u)
+.        in (\\n[an-margin]u + \\n[an-prevailing-indent]u)
+.      \}
+.      el \{\
+.        ie (\\n[.$] > 1) .TL "\\$2"
+.        el               .TL
+.        nop \&\\$1
+.      \}
+.    .
 .  \}
 .  el \{\
-.    ie (\\n[.$] > 1) .TL "\\$2"
-.    el               .TL
-.    nop \&\\$1
+.    de1 TL
+.      nop \\$*
+.    .
+.    de1 IL
+.      nop \\$1
+.    .
 .  \}
-..
+.\}
 .de BPC
 .IL \(bu 2
 .na
@@ -2341,7 +2389,7 @@ Escape Sequence	Designate As
 1/11 2/10	G2
 \fBESC   *\fR   {final}
 
-1/11 2/11	G2
+1/11 2/11	G3
 \fBESC   +\fR   {final}
 .TE
 .P
@@ -4522,7 +4570,7 @@ zero (0>) specifies background (pixel off).
 For example, suppose you want to design an 80-column font character A.
 To do this, you follow a four-step process.
 .IP 1. 4
-Use the 80-column terminal character sell size format and designate
+Use the 80-column terminal character cell size format and designate
 which pixels will be on and which pixels will be off. Your design may
 look like Figure 4-5.
 .IP 2. 4
