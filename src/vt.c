@@ -34,23 +34,27 @@
 #define	STATE_ESC_HASH		4
 #define	STATE_DCS		5
 #define	STATE_DCS_ESC		6
-#define	STATE_SIXEL		7
-#define	STATE_SIXEL_ESC		8
-#define	STATE_SIXEL_REPEAT	9
-#define	STATE_SIXEL_COLOR	10
-#define	STATE_DCA1		11
-#define	STATE_DCA2		12
-#define	STATE_G			13
-#define	STATE_ESC_SP		14
-#define	STATE_CSI_GT		15
-#define	STATE_CSI_QUOT		16
-#define	STATE_CSI_EXCL		17
-#define	STATE_DECUDK		18
-#define	STATE_DECUDK_ESC	19
-#define	STATE_DECUDK_ODD	20
-#define	STATE_DECUDK_ODD_ESC	21
-#define	STATE_DECUDK_EVEN	22
-#define	STATE_DECUDK_EVEN_ESC	23
+#define	STATE_DCS_UNK		7
+#define	STATE_DCS_UNK_ESC	8
+#define	STATE_SIXEL		9
+#define	STATE_SIXEL_ESC		10
+#define	STATE_SIXEL_REPEAT	11
+#define	STATE_SIXEL_REPEAT_ESC	12
+#define	STATE_SIXEL_COLOR	13
+#define	STATE_SIXEL_COLOR_ESC	14
+#define	STATE_DCA1		15
+#define	STATE_DCA2		16
+#define	STATE_G			17
+#define	STATE_ESC_SP		18
+#define	STATE_CSI_GT		19
+#define	STATE_CSI_QUOT		20
+#define	STATE_CSI_EXCL		21
+#define	STATE_DECUDK		22
+#define	STATE_DECUDK_ESC	23
+#define	STATE_DECUDK_ODD	24
+#define	STATE_DECUDK_ODD_ESC	25
+#define	STATE_DECUDK_EVEN	26
+#define	STATE_DECUDK_EVEN_ESC	27
 
 static const VT240NVR default_config = { 0 };
 
@@ -2476,6 +2480,9 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 						vt->parameters[vt->parameter_id] = 0;
 					}
 					break;
+				default:
+					vt->state = STATE_DCS_UNK;
+					break;
 			}
 			break;
 		case STATE_DCS_ESC:
@@ -2501,10 +2508,50 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 					break;
 			}
 			break;
+		case STATE_DCS_UNK:
+			switch(c) {
+				case ESC:
+					vt->state = STATE_DCS_UNK_ESC;
+					break;
+				case CAN:
+					vt->state = STATE_TEXT;
+					break;
+				case SUB:
+					vt->state = STATE_TEXT;
+					VT240Substitute(vt);
+					break;
+				case ST:
+					vt->state = STATE_TEXT;
+					break;
+			}
+			break;
+		case STATE_DCS_UNK_ESC:
+			switch(c) {
+				case ESC:
+					vt->state = STATE_DCS_UNK_ESC;
+					break;
+				case CAN:
+					vt->state = STATE_TEXT;
+					break;
+				case SUB:
+					vt->state = STATE_TEXT;
+					VT240Substitute(vt);
+					break;
+				case ST:
+					vt->state = STATE_TEXT;
+					break;
+				default:
+					vt->state = STATE_DCS_UNK;
+					if((c + 0x40) >= 0x80 && (c + 0x40) < 0xA0) {
+						VT240ProcessCharVT240(vt, c + 0x40);
+					}
+					break;
+			}
+			break;
 		case STATE_SIXEL:
 			switch(c) {
 				case ESC:
-					vt->state = STATE_DCS_ESC;
+					vt->state = STATE_SIXEL_ESC;
 					break;
 				case CAN:
 					vt->state = STATE_TEXT;
@@ -2589,7 +2636,7 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 		case STATE_SIXEL_REPEAT:
 			switch(c) {
 				case ESC:
-					vt->state = STATE_SIXEL_ESC;
+					vt->state = STATE_SIXEL_REPEAT_ESC;
 					break;
 				case CAN:
 					vt->state = STATE_TEXT;
@@ -2655,10 +2702,33 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 					break;
 			}
 			break;
+		case STATE_SIXEL_REPEAT_ESC:
+			switch(c) {
+				case ESC:
+					vt->state = STATE_SIXEL_REPEAT_ESC;
+					break;
+				case CAN:
+					vt->state = STATE_TEXT;
+					break;
+				case SUB:
+					vt->state = STATE_TEXT;
+					VT240Substitute(vt);
+					break;
+				case ST:
+					vt->state = STATE_TEXT;
+					break;
+				default:
+					vt->state = STATE_SIXEL_REPEAT;
+					if((c + 0x40) >= 0x80 && (c + 0x40) < 0xA0) {
+						VT240ProcessCharVT240(vt, c + 0x40);
+					}
+					break;
+			}
+			break;
 		case STATE_SIXEL_COLOR:
 			switch(c) {
 				case ESC:
-					vt->state = STATE_DCS_ESC;
+					vt->state = STATE_SIXEL_COLOR_ESC;
 					break;
 				case CAN:
 					vt->state = STATE_TEXT;
@@ -2730,6 +2800,29 @@ void VT240ProcessCharVT240(VT240* vt, unsigned char c)
 						}
 					}
 					VT240ProcessCharVT240(vt, c);
+					break;
+			}
+			break;
+		case STATE_SIXEL_COLOR_ESC:
+			switch(c) {
+				case ESC:
+					vt->state = STATE_SIXEL_COLOR_ESC;
+					break;
+				case CAN:
+					vt->state = STATE_TEXT;
+					break;
+				case SUB:
+					vt->state = STATE_TEXT;
+					VT240Substitute(vt);
+					break;
+				case ST:
+					vt->state = STATE_TEXT;
+					break;
+				default:
+					vt->state = STATE_SIXEL_COLOR;
+					if((c + 0x40) >= 0x80 && (c + 0x40) < 0xA0) {
+						VT240ProcessCharVT240(vt, c + 0x40);
+					}
 					break;
 			}
 			break;
